@@ -15,6 +15,33 @@ validated with zod, a scoring function that lives in code rather than in a promp
 deterministic unit-economics model, an eval harness with a build gate, and a route that keeps
 the API key server-side and rate-limits strangers.
 
+## The design
+
+It is set as an illuminated manuscript, because a court that issues sealed decrees should look
+like one.
+
+- **Type.** UnifrakturMaguntia (blackletter) for display only — it is beautiful and unreadable
+  in quantity. Cinzel, the Renaissance revival of Trajan's inscriptional capitals, for headings
+  and labels. EB Garamond, a Claude Garamond of about 1540, for every word of running text.
+- **Pigments.** The ones a scriptorium actually had: iron-gall ink, vermilion for rubrication,
+  verdigris, lapis, gold leaf. Every pigment that carries text was contrast-checked against the
+  parchment before it went in, so the costume never costs legibility. The score bands map to
+  vermilion / gold / verdigris — period colours that still read as red, amber, green.
+- **The wax is drawn, not styled.** A CSS blob reads as a glossy button. The seal is an SVG disc
+  displaced by fractal turbulence so its edge wanders, with a spill of overflow beneath it and a
+  signet impression cut by two offset strokes — dark on the upper wall, light on the lower lip —
+  so the mark reads as pressed into the wax rather than printed on it.
+- **The rubric is a tally, not a bar chart.** Ten lozenges per virtue, inked or left blank, the
+  way a count is kept in a ledger. Magnitude is carried by the number of marks, so nothing
+  depends on hue.
+- **Legibility is never traded for flavour.** Every rubric axis carries its plain modern name and
+  a plain modern hint beneath the courtly one; the ledger's medieval column headings each carry
+  their ordinary term underneath; and the rubric notes themselves stay in plain, precise English,
+  because an investor has to be able to read them and learn something true. The costume is worn
+  by the headings and the verdict, never by the analysis.
+- **Parchment only.** There is no dark mode for the fifteenth century — a deliberate commitment
+  to one look rather than an omission.
+
 ---
 
 ## Run it
@@ -171,6 +198,10 @@ not a substitute for professional security testing.
 
 Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Recharts · zod · Anthropic SDK ·
 Vitest · deployed on Vercel. No database, no auth, no state beyond React.
+
+Both projection charts are drawn in the same ink on purpose. Each panel holds one series and is
+named by its own heading, so colour has nothing left to encode — and two measures on different
+scales never share one pair of axes, which is the ordinary way a chart lies.
 
 ## Scope
 

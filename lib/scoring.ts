@@ -14,7 +14,22 @@ export const RUBRIC_WEIGHTS: Record<RubricAxis, number> = {
   timing_half_life: 1,
 };
 
+/**
+ * The court's names for the seven virtues. Flavour on top; RUBRIC_HINTS below
+ * keeps the plain meaning attached, so nothing is ever lost to the costume.
+ */
 export const RUBRIC_LABELS: Record<RubricAxis, string> = {
+  problem_intensity: 'Gravity of the affliction',
+  wrapper_platform_risk: 'Peril from the great engines',
+  moat_beyond_model: 'The moat',
+  distribution: 'Reach unto customers',
+  willingness_to_pay: 'Willingness of purse',
+  unit_economics: "The ledger's margin",
+  timing_half_life: 'Half-life of the craft',
+};
+
+/** The plain modern name, kept beside each so the rubric stays legible. */
+export const RUBRIC_PLAIN: Record<RubricAxis, string> = {
   problem_intensity: 'Problem intensity',
   wrapper_platform_risk: 'Wrapper / platform risk',
   moat_beyond_model: 'Moat beyond the model',
@@ -49,8 +64,12 @@ export function bandFor(score: number): Band {
   return 'High';
 }
 
-export const BAND_COLORS: Record<Band, { hex: string; label: string }> = {
-  Low: { hex: '#e5484d', label: 'Low' },
-  Medium: { hex: '#f5a524', label: 'Medium' },
-  High: { hex: '#30a46c', label: 'High' },
+/**
+ * Period pigments that still read as red / amber / green. Every one clears AA
+ * against the parchment, checked before it went in.
+ */
+export const BAND_COLORS: Record<Band, { hex: string; label: string; motto: string }> = {
+  Low: { hex: '#9c2b21', label: 'Ill-starred', motto: 'vermilion' },
+  Medium: { hex: '#7d5a0d', label: 'Uncertain', motto: 'gold' },
+  High: { hex: '#3f6b52', label: 'Fair prospect', motto: 'verdigris' },
 };

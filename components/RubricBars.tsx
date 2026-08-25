@@ -1,54 +1,75 @@
 import { RUBRIC_AXES, type Rubric, type RubricNotes } from '@/lib/schemas';
-import { RUBRIC_HINTS, RUBRIC_LABELS, RUBRIC_WEIGHTS } from '@/lib/scoring';
+import { RUBRIC_HINTS, RUBRIC_LABELS, RUBRIC_PLAIN, RUBRIC_WEIGHTS } from '@/lib/scoring';
+
+const PIPS = Array.from({ length: 10 }, (_, i) => i + 1);
 
 /**
- * A single near-neutral ramp, dim→bright by magnitude. Deliberately NOT amber or
- * green: those are the score band's status colours and reusing them here would
- * make seven ordinary axes look like seven warnings.
+ * Ten lozenges, inked or left blank — how a tally is kept in a ledger, and
+ * far more legible at a glance than a progress bar. Magnitude is carried by the
+ * count, not by colour, so nothing here depends on hue.
  */
-function toneFor(value: number): string {
-  const t = Math.max(0, Math.min(10, value)) / 10;
-  const lightness = 0.46 + t * 0.4;
-  const chroma = 0.012 + t * 0.03;
-  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} 85)`;
+function Tally({ value, label }: { value: number; label: string }) {
+  return (
+    <div
+      className="flex items-center gap-[5px]"
+      role="meter"
+      aria-valuenow={value}
+      aria-valuemin={0}
+      aria-valuemax={10}
+      aria-label={`${label}: ${value} of 10`}
+    >
+      {PIPS.map((pip) => {
+        const inked = pip <= value;
+        return (
+          <span
+            key={pip}
+            aria-hidden
+            className="h-[13px] w-[13px] rotate-45 border"
+            style={{
+              borderColor: 'rgba(42,30,18,0.65)',
+              background: inked ? '#2a1e12' : 'transparent',
+            }}
+          />
+        );
+      })}
+    </div>
+  );
 }
 
 export function RubricBars({ rubric, notes }: { rubric: Rubric; notes: RubricNotes }) {
   return (
-    <ol className="divide-y divide-[rgba(236,229,216,0.10)] border-y rule">
-      {RUBRIC_AXES.map((axis) => {
+    <ol className="divide-y divide-[rgba(138,118,88,0.34)] border-y rule-faint">
+      {RUBRIC_AXES.map((axis, i) => {
         const value = rubric[axis];
         return (
-          <li key={axis} className="py-5">
-            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
-              <h4 className="font-display text-xl text-bone">{RUBRIC_LABELS[axis]}</h4>
-              <div className="flex items-baseline gap-3">
+          <li key={axis} className="py-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-6 gap-y-2">
+              <h4 className="text-[1.35rem] leading-tight text-ink">
+                <span className="titling text-vermilion mr-2.5 text-[0.7rem]">
+                  {['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii'][i]}
+                </span>
+                {RUBRIC_LABELS[axis]}
+              </h4>
+              <div className="flex items-baseline gap-4">
                 {RUBRIC_WEIGHTS[axis] > 1 && (
-                  <span className="label-caps text-bone-3">×{RUBRIC_WEIGHTS[axis]} weight</span>
+                  <span className="titling text-[0.6rem] text-ink-faint">
+                    counted {RUBRIC_WEIGHTS[axis]}-fold
+                  </span>
                 )}
-                <span className="tabular font-mono text-sm text-bone-2">
-                  {value}
-                  <span className="text-bone-3">/10</span>
+                <span className="tabular text-base text-ink-soft">
+                  {value} <span className="text-ink-faint">of 10</span>
                 </span>
               </div>
             </div>
 
-            <div
-              className="mt-3 h-2 w-full bg-[rgba(236,229,216,0.08)]"
-              role="meter"
-              aria-valuenow={value}
-              aria-valuemin={0}
-              aria-valuemax={10}
-              aria-label={`${RUBRIC_LABELS[axis]}: ${value} out of 10`}
-            >
-              <div
-                className="h-full rounded-r-[4px] transition-[width] duration-700 ease-out"
-                style={{ width: `${(value / 10) * 100}%`, background: toneFor(value) }}
-              />
+            <div className="mt-4">
+              <Tally value={value} label={RUBRIC_PLAIN[axis]} />
             </div>
 
-            <p className="mt-3 text-sm leading-relaxed text-bone-2">{notes[axis]}</p>
-            <p className="mt-1 text-xs text-bone-3">{RUBRIC_HINTS[axis]}</p>
+            <p className="mt-4 max-w-2xl text-[1.05rem] leading-relaxed text-ink">{notes[axis]}</p>
+            <p className="mt-1.5 text-sm italic text-ink-faint">
+              {RUBRIC_PLAIN[axis]} — {RUBRIC_HINTS[axis]}
+            </p>
           </li>
         );
       })}

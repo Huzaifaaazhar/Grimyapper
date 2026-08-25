@@ -13,48 +13,50 @@ import {
 import type { MonthRow } from '@/lib/schemas';
 
 /**
- * Two small multiples, never a dual axis. Users and MRR are different measures
- * on different scales; stacking them on one plot with two y-scales is the single
- * most common way to make a chart lie.
+ * Two plots, never one with two scales. Souls and rents are different measures;
+ * putting them on a single pair of axes is the ordinary way a chart lies.
+ *
+ * Both are drawn in the same iron-gall ink on purpose. Each panel holds one
+ * series and is named by its own heading, so colour has nothing left to encode
+ * — and a scribe with one inkhorn would not have coloured them differently.
  */
+const INK = '#3d2c1a';
+
 const SERIES = {
-  users: { color: '#3987e5', label: 'Signed-up users' },
-  gross_mrr: { color: '#199e70', label: 'Monthly recurring revenue' },
+  users: { label: 'Souls enrolled', kind: 'count' },
+  gross_mrr: { label: 'Rents received each month', kind: 'coin' },
 } as const;
 
+type Key = keyof typeof SERIES;
+
 const compact = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
-const money = new Intl.NumberFormat('en-US', {
+const coin = new Intl.NumberFormat('en-US', {
   style: 'currency',
   currency: 'USD',
   maximumFractionDigits: 0,
 });
 const exact = new Intl.NumberFormat('en-US');
 
-type Key = keyof typeof SERIES;
-
 function ChartTooltip({
   active,
   payload,
-  label,
   dataKey,
 }: {
   active?: boolean;
   payload?: Array<{ payload: MonthRow }>;
-  label?: string | number;
   dataKey: Key;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
-  const value = row[dataKey];
   return (
-    <div className="border rule bg-ink-3 px-3 py-2 shadow-xl">
-      <p className="label-caps text-bone-3">
-        Month {row.month} · {label}
+    <div className="border border-ink bg-vellum-lit px-3.5 py-2.5 shadow-[0_8px_20px_-8px_rgba(42,30,18,0.6)]">
+      <p className="titling text-[0.6rem] text-vermilion">
+        Month {row.month} · {row.label}
       </p>
-      <p className="tabular mt-1 font-mono text-sm text-bone">
-        {dataKey === 'gross_mrr' ? money.format(value) : exact.format(value)}
+      <p className="tabular mt-1.5 text-base text-ink">
+        {dataKey === 'gross_mrr' ? coin.format(row.gross_mrr) : exact.format(row.users)}
       </p>
-      <p className="tabular mt-0.5 font-mono text-xs text-bone-3">
+      <p className="tabular mt-0.5 text-sm text-ink-faint">
         {exact.format(row.paying)} paying
       </p>
     </div>
@@ -64,71 +66,58 @@ function ChartTooltip({
 function Panel({ months, dataKey }: { months: MonthRow[]; dataKey: Key }) {
   const series = SERIES[dataKey];
   const final = months[months.length - 1];
-  const gradientId = `grad-${dataKey}`;
+  const gradientId = `wash-${dataKey}`;
 
   return (
-    <figure>
-      <figcaption className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-        <span className="flex items-center gap-2">
-          <span
-            className="h-2.5 w-2.5 rounded-full"
-            style={{ background: series.color }}
-            aria-hidden
-          />
-          <span className="label-caps text-bone-2">{series.label}</span>
-        </span>
-        <span className="tabular font-mono text-sm text-bone-3">
-          month 12:{' '}
-          <span className="text-bone">
-            {dataKey === 'gross_mrr'
-              ? money.format(final.gross_mrr)
-              : exact.format(final.users)}
+    <figure className="border border-[rgba(90,72,46,0.34)] bg-[rgba(255,250,235,0.34)] p-4 sm:p-5">
+      <figcaption className="mb-4 flex flex-wrap items-baseline justify-between gap-2 border-b rule-faint pb-2.5">
+        <span className="titling text-[0.66rem] text-ink">{series.label}</span>
+        <span className="tabular text-sm text-ink-soft">
+          by the twelfth:{' '}
+          <span className="text-ink">
+            {dataKey === 'gross_mrr' ? coin.format(final.gross_mrr) : exact.format(final.users)}
           </span>
         </span>
       </figcaption>
 
       <div className="h-52 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={months} margin={{ top: 6, right: 8, bottom: 0, left: -12 }}>
+          <AreaChart data={months} margin={{ top: 6, right: 8, bottom: 0, left: -10 }}>
             <defs>
               <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stopColor={series.color} stopOpacity={0.34} />
-                <stop offset="100%" stopColor={series.color} stopOpacity={0.02} />
+                <stop offset="0%" stopColor={INK} stopOpacity={0.26} />
+                <stop offset="100%" stopColor={INK} stopOpacity={0.02} />
               </linearGradient>
             </defs>
-            <CartesianGrid
-              stroke="rgba(236,229,216,0.07)"
-              strokeDasharray="0"
-              vertical={false}
-            />
+            <CartesianGrid stroke="rgba(90,72,46,0.2)" strokeDasharray="0" vertical={false} />
             <XAxis
               dataKey="label"
-              tick={{ fill: '#8a8377', fontSize: 11 }}
+              tick={{ fill: '#6f5c3f', fontSize: 12, fontFamily: 'var(--font-garamond)' }}
               tickLine={false}
-              axisLine={{ stroke: 'rgba(236,229,216,0.12)' }}
+              axisLine={{ stroke: 'rgba(42,30,18,0.5)' }}
               interval="preserveStartEnd"
               minTickGap={12}
             />
             <YAxis
-              tick={{ fill: '#8a8377', fontSize: 11 }}
+              tick={{ fill: '#6f5c3f', fontSize: 12, fontFamily: 'var(--font-garamond)' }}
               tickLine={false}
               axisLine={false}
-              width={56}
+              width={54}
               tickFormatter={(v: number) =>
                 dataKey === 'gross_mrr' ? `$${compact.format(v)}` : compact.format(v)
               }
             />
             <Tooltip
-              cursor={{ stroke: 'rgba(236,229,216,0.32)', strokeWidth: 1 }}
+              cursor={{ stroke: 'rgba(42,30,18,0.45)', strokeWidth: 1 }}
               content={<ChartTooltip dataKey={dataKey} />}
             />
             <Area
               type="monotone"
               dataKey={dataKey}
-              stroke={series.color}
+              stroke={INK}
               strokeWidth={2}
               fill={`url(#${gradientId})`}
-              activeDot={{ r: 4.5, stroke: '#0f0f11', strokeWidth: 2, fill: series.color }}
+              activeDot={{ r: 4.5, stroke: '#e9dfc6', strokeWidth: 2, fill: INK }}
               isAnimationActive={false}
             />
           </AreaChart>
@@ -140,7 +129,7 @@ function Panel({ months, dataKey }: { months: MonthRow[]; dataKey: Key }) {
 
 export function ProjectionChart({ months }: { months: MonthRow[] }) {
   return (
-    <div className="grid gap-8 lg:grid-cols-2">
+    <div className="grid gap-6 lg:grid-cols-2">
       <Panel months={months} dataKey="users" />
       <Panel months={months} dataKey="gross_mrr" />
     </div>

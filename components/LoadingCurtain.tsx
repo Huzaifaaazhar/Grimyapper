@@ -2,44 +2,45 @@
 
 import { useEffect, useState } from 'react';
 
+import { WaxSeal } from './Ornaments';
+
 const LINES = [
-  'Consulting the graveyard of dead startups…',
-  'Cross-referencing your idea against next quarter’s changelog…',
-  'Asking a model whether it could just do this itself…',
-  'Measuring the moat. Bringing a very short ruler…',
-  'Checking whether anyone has ever paid for this…',
-  'Warming up the rubber stamp…',
-  'Estimating time-to-obsolescence in business days…',
-  'Interviewing three founders who tried this in 2024…',
+  'The clerks are consulting the ossuary of failed ventures…',
+  'A boy has been sent to the archive. He is not a fast boy.',
+  'Weighing thy venture against the great thinking engines…',
+  'The assayer is sharpening his quill. This bodes ill.',
+  'Consulting the almanac for the hour of thy ruin…',
+  'Three merchants attempted this in the year twenty-four. We are looking them up.',
+  'The wax is warming.',
+  'The scribe has spilt ink upon the ledger. He is unharmed. Thy venture is not.',
 ];
 
 export function LoadingCurtain() {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    const id = setInterval(() => setIndex((i) => (i + 1) % LINES.length), 2100);
+    const id = setInterval(() => setIndex((i) => (i + 1) % LINES.length), 2300);
     return () => clearInterval(id);
   }, []);
 
   return (
-    <div className="animate-fade flex min-h-[38vh] flex-col items-center justify-center text-center">
-      <div className="flex gap-1.5" aria-hidden>
-        {[0, 1, 2].map((i) => (
-          <span
-            key={i}
-            className="h-1.5 w-1.5 rounded-full bg-stamp-bright"
-            style={{ animation: `fade 1.1s ease-in-out ${i * 0.18}s infinite alternate` }}
-          />
-        ))}
+    <div className="fade flex min-h-[40vh] flex-col items-center justify-center text-center">
+      <div
+        className="relative"
+        style={{ animation: 'fade 1.5s ease-in-out infinite alternate' }}
+      >
+        <WaxSeal mark="G" size={92} />
       </div>
+
       <p
         key={index}
-        className="animate-fade mt-8 max-w-md font-display text-2xl leading-snug text-bone sm:text-3xl"
+        className="fade mt-10 max-w-lg text-2xl italic leading-snug text-ink sm:text-[1.7rem]"
         aria-live="polite"
       >
         {LINES[index]}
       </p>
-      <p className="label-caps mt-6 text-bone-3">Deliberating</p>
+
+      <p className="titling mt-8 text-xs text-ink-faint">The court deliberates</p>
     </div>
   );
 }

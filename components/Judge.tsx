@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { DeathCertificate } from '@/components/DeathCertificate';
 import { Dossier } from '@/components/Dossier';
 import { LoadingCurtain } from '@/components/LoadingCurtain';
+import { Fleuron, Lozenges } from '@/components/Ornaments';
 import { PitchForm } from '@/components/PitchForm';
 import type { JudgeResult } from '@/lib/schemas';
 
@@ -35,12 +36,15 @@ export function Judge() {
         });
         const body = await res.json();
         if (!res.ok) {
-          setPhase({ kind: 'error', message: body?.error ?? 'Something went wrong.' });
+          setPhase({ kind: 'error', message: body?.error ?? 'The court is silent.' });
           return;
         }
         setPhase({ kind: 'done', result: body as JudgeResult, idea: payload.idea });
       } catch {
-        setPhase({ kind: 'error', message: 'Could not reach the bureau. Check your connection.' });
+        setPhase({
+          kind: 'error',
+          message: 'The messenger did not return. Check thy connection to the world.',
+        });
       }
     },
     [],
@@ -49,26 +53,30 @@ export function Judge() {
   const reset = () => setPhase({ kind: 'idle' });
 
   return (
-    <main className="mx-auto w-full max-w-4xl px-6 pb-24 pt-16 sm:pt-24">
-      <header className="border-b rule pb-10">
-        <div className="flex items-center gap-3">
-          <span className="h-2 w-2 bg-stamp-bright" aria-hidden />
-          <span className="label-caps text-bone-3">Grimyapper · est. whenever</span>
-        </div>
-        <h1 className="mt-6 font-display text-5xl leading-[0.95] text-bone sm:text-7xl">
+    <main className="relative z-10 mx-auto w-full max-w-4xl px-6 pb-28 pt-14 sm:pt-20">
+      <header className="text-center">
+        <p className="titling text-[0.66rem] text-ink-faint">
+          Grimyapper · Assayer of ventures
+        </p>
+
+        <h1 className="blackletter mt-6 text-6xl leading-[0.92] text-ink sm:text-8xl">
           Should this
           <br />
           exist?
         </h1>
-        <p className="mt-6 max-w-xl text-base leading-relaxed text-bone-2">
-          Pitch a startup. If it is an AI startup, it gets a real rubric, a score, and a
-          suspiciously precise twelve-month projection. If it is not, it gets a death certificate.
+
+        <Fleuron className="mx-auto mt-8 max-w-lg" />
+
+        <p className="mx-auto mt-6 max-w-xl text-[1.1rem] leading-relaxed text-ink-soft">
+          Bring thy venture before the court. Should it be built upon thinking engines, it shall
+          be assayed against seven virtues and a reckoning of twelve months. Should it not, thou
+          shalt receive a sealed decree of extinction, and no reckoning at all.
         </p>
       </header>
 
       <div ref={resultRef} className="scroll-mt-8">
         {phase.kind === 'idle' && (
-          <div className="pt-12">
+          <div className="mt-14 border-y-2 border-[rgba(42,30,18,0.4)] py-12">
             <PitchForm onSubmit={submit} disabled={false} />
           </div>
         )}
@@ -80,55 +88,58 @@ export function Judge() {
         )}
 
         {phase.kind === 'error' && (
-          <div className="animate-rise pt-12">
-            <div className="border border-stamp/50 bg-stamp/10 px-6 py-8">
-              <p className="label-caps text-stamp-bright">Filing failed</p>
-              <p className="mt-3 font-display text-2xl text-bone">{phase.message}</p>
+          <div className="rise pt-14">
+            <div className="border-2 border-vermilion bg-[rgba(156,43,33,0.07)] px-7 py-9 text-center">
+              <p className="titling text-[0.66rem] text-vermilion">The filing has failed</p>
+              <p className="blackletter mt-4 text-3xl leading-snug text-ink">{phase.message}</p>
             </div>
-            <button
-              type="button"
-              onClick={reset}
-              className="mt-8 border rule px-6 py-3 font-display text-xl text-bone transition-colors hover:border-amber hover:text-amber"
-            >
-              Try again
-            </button>
+            <div className="mt-10 flex justify-center">
+              <button
+                type="button"
+                onClick={reset}
+                className="border-2 border-ink px-8 py-3.5 transition-colors hover:border-vermilion"
+              >
+                <span className="blackletter text-2xl text-ink">Petition anew</span>
+              </button>
+            </div>
           </div>
         )}
 
         {phase.kind === 'done' && (
-          <div className="pt-12">
+          <div className="pt-14">
             {phase.result.outcome === 'rejected' ? (
               <DeathCertificate result={phase.result} idea={phase.idea} />
             ) : (
               <Dossier result={phase.result} idea={phase.idea} />
             )}
 
-            <div className="mt-12 flex justify-center">
+            <div className="mt-14 flex justify-center">
               <button
                 type="button"
                 onClick={reset}
-                className="group inline-flex items-center gap-3 border rule px-8 py-4 font-display text-2xl text-bone transition-colors hover:border-amber hover:text-amber"
+                className="group inline-flex items-center gap-3 border-2 border-ink px-9 py-4 transition-colors hover:border-vermilion"
               >
-                <span aria-hidden className="transition-transform group-hover:-translate-x-1">
-                  ←
+                <span aria-hidden className="text-vermilion transition-transform group-hover:-translate-x-1">
+                  ❦
                 </span>
-                Judge another
+                <span className="blackletter text-3xl text-ink">Bring forth another</span>
               </button>
             </div>
           </div>
         )}
       </div>
 
-      <footer className="mt-24 border-t rule pt-8">
-        <p className="text-xs leading-relaxed text-bone-3">
-          Grimyapper is a comedy instrument with real machinery behind it: a classifier, a
-          seven-axis rubric scored in code, and a deterministic unit-economics model. It is not
-          investment advice, and it has never been right about anything.
+      <footer className="mt-24">
+        <Lozenges />
+        <p className="mx-auto mt-7 max-w-2xl text-center text-sm leading-relaxed text-ink-soft">
+          Grimyapper is a jest with real machinery beneath it: a classifier, seven virtues scored
+          in code, and a deterministic reckoning of unit economics. It is not counsel upon money,
+          and it has never once been right.
         </p>
-        <p className="mt-3 text-xs leading-relaxed text-bone-3">
-          What happens to your pitch: it is sent to Anthropic&rsquo;s API to be judged, and that is
-          all. Nothing you type is stored, logged, or kept after the response is rendered. There is
-          no account, no database, and no analytics on this page.
+        <p className="mx-auto mt-3.5 max-w-2xl text-center text-xs leading-relaxed text-ink-faint">
+          What becomes of thy petition: it is sent to Anthropic&rsquo;s API to be judged, and
+          nothing more. Nothing thou writest is stored, logged, or kept once the answer is drawn.
+          There is no account, no ledger of record, and no reckoning of visitors upon this page.
         </p>
       </footer>
     </main>

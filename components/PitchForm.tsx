@@ -2,6 +2,7 @@
 
 import { useRef, useState } from 'react';
 
+import { WaxSeal } from './Ornaments';
 import { MAX_CUSTOMER_CHARS, MAX_IDEA_CHARS, MAX_NAME_CHARS, MIN_IDEA_CHARS } from '@/lib/schemas';
 
 type Props = {
@@ -9,8 +10,16 @@ type Props = {
   disabled: boolean;
 };
 
-const fieldClass =
-  'w-full rounded-none border-b bg-transparent px-0 py-2.5 text-bone placeholder:text-bone-3 rule focus:border-amber focus:outline-none transition-colors';
+const field =
+  'w-full rounded-none border-0 border-b bg-transparent px-0 py-2 text-ink placeholder:text-[rgba(111,92,63,0.55)] rule-ink focus:border-vermilion focus:outline-none transition-colors';
+
+function Numeral({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="text-vermilion mr-2 font-[family-name:var(--font-title)] tracking-[0.16em]">
+      {children}
+    </span>
+  );
+}
 
 export function PitchForm({ onSubmit, disabled }: Props) {
   const [idea, setIdea] = useState('');
@@ -24,7 +33,7 @@ export function PitchForm({ onSubmit, disabled }: Props) {
 
   return (
     <form
-      className="animate-rise"
+      className="rise"
       onSubmit={(e) => {
         e.preventDefault();
         setTouched(true);
@@ -35,9 +44,10 @@ export function PitchForm({ onSubmit, disabled }: Props) {
         onSubmit({ idea: idea.trim(), name: name.trim(), customer: customer.trim() });
       }}
     >
-      <label htmlFor="idea" className="label-caps block text-bone-3">
-        01 — The pitch
+      <label htmlFor="idea" className="titling block text-xs text-ink-faint">
+        <Numeral>I</Numeral> Thy petition
       </label>
+
       <textarea
         id="idea"
         ref={textareaRef}
@@ -46,29 +56,29 @@ export function PitchForm({ onSubmit, disabled }: Props) {
         onChange={(e) => setIdea(e.target.value)}
         rows={4}
         disabled={disabled}
-        placeholder="Pitch me your startup in a sentence or two."
-        className={`${fieldClass} mt-3 resize-none font-display text-2xl leading-snug sm:text-3xl`}
+        placeholder="Set down thy venture in a sentence or two."
+        className={`${field} mt-4 resize-none text-2xl leading-[1.62rem] sm:text-[1.7rem]`}
         aria-describedby="idea-help"
       />
 
-      <div id="idea-help" className="mt-2 flex items-center justify-between gap-4">
-        <p className="text-xs text-bone-3">
+      <div id="idea-help" className="mt-3 flex items-baseline justify-between gap-4">
+        <p className="text-sm italic text-ink-soft">
           {touched && tooShort
-            ? 'A sentence. At minimum. The bureau has standards.'
-            : 'One or two sentences. No deck required.'}
+            ? 'A sentence at the least. The clerks will not read fragments.'
+            : 'A sentence or two. No ledger of accounts is required.'}
         </p>
         <span
-          className={`label-caps tabular ${remaining < 60 ? 'text-amber' : 'text-bone-3'}`}
+          className={`tabular text-xs ${remaining < 60 ? 'text-vermilion' : 'text-ink-faint'}`}
           aria-live="polite"
         >
-          {remaining}
+          {remaining} characters remain
         </span>
       </div>
 
       <div className="mt-10 grid gap-8 sm:grid-cols-2">
         <div>
-          <label htmlFor="name" className="label-caps block text-bone-3">
-            02 — Name <span className="normal-case tracking-normal">(optional)</span>
+          <label htmlFor="name" className="titling block text-xs text-ink-faint">
+            <Numeral>II</Numeral> By what name is it known
           </label>
           <input
             id="name"
@@ -76,13 +86,13 @@ export function PitchForm({ onSubmit, disabled }: Props) {
             maxLength={MAX_NAME_CHARS}
             onChange={(e) => setName(e.target.value)}
             disabled={disabled}
-            placeholder="Synergex"
-            className={`${fieldClass} mt-2 text-base`}
+            placeholder="The Synergex Company"
+            className={`${field} mt-3 text-lg`}
           />
         </div>
         <div>
-          <label htmlFor="customer" className="label-caps block text-bone-3">
-            03 — Target customer <span className="normal-case tracking-normal">(optional)</span>
+          <label htmlFor="customer" className="titling block text-xs text-ink-faint">
+            <Numeral>III</Numeral> Whom dost thou intend to serve
           </label>
           <input
             id="customer"
@@ -90,22 +100,27 @@ export function PitchForm({ onSubmit, disabled }: Props) {
             maxLength={MAX_CUSTOMER_CHARS}
             onChange={(e) => setCustomer(e.target.value)}
             disabled={disabled}
-            placeholder="Mid-market insurance adjusters"
-            className={`${fieldClass} mt-2 text-base`}
+            placeholder="Adjusters of the middling guilds"
+            className={`${field} mt-3 text-lg`}
           />
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={disabled}
-        className="group mt-12 inline-flex w-full items-center justify-center gap-3 border border-stamp bg-stamp px-8 py-4 font-display text-2xl text-bone transition-all hover:bg-stamp-bright hover:border-stamp-bright disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
-      >
-        Judge it
-        <span aria-hidden className="transition-transform group-hover:translate-x-1">
-          →
-        </span>
-      </button>
+      <div className="mt-14 flex flex-col items-center gap-4">
+        <button
+          type="submit"
+          disabled={disabled}
+          className="group relative inline-flex items-center gap-4 border-2 border-ink bg-[rgba(42,30,18,0.04)] px-10 py-4 transition-colors hover:bg-[rgba(156,43,33,0.09)] hover:border-vermilion disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          <span className="blackletter text-3xl text-ink transition-colors group-hover:text-vermilion">
+            Seal it and send
+          </span>
+          <WaxSeal mark="G" size={34} className="shrink-0" />
+        </button>
+        <p className="text-xs italic text-ink-faint">
+          Judgement is rendered forthwith, and cannot be appealed.
+        </p>
+      </div>
     </form>
   );
 }

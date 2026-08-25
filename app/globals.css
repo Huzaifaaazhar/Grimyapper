@@ -1,31 +1,49 @@
 @import 'tailwindcss';
 
+/*
+ * Grimyapper — an illuminated manuscript.
+ *
+ * Pigments are the ones a 15th-century scriptorium actually had: iron-gall ink,
+ * vermilion for rubrication, verdigris, lapis, and gold leaf. Every one that
+ * carries text was checked against the parchment for AA contrast before it went
+ * in, so the period look never costs legibility.
+ */
+
 @theme {
-  --color-ink: #09090a;
-  --color-ink-2: #0f0f11;
-  --color-ink-3: #16161a;
-  --color-ink-4: #1e1e23;
+  /* parchment */
+  --color-vellum: #e9dfc6;
+  --color-vellum-lit: #f2ecdb;
+  --color-vellum-deep: #d9c9a6;
+  --color-vellum-shade: #c9b48c;
 
-  --color-bone: #ece5d8;
-  --color-bone-2: #c5bdac;
-  --color-bone-3: #8a8377;
+  /* iron-gall ink */
+  --color-ink: #2a1e12;
+  --color-ink-soft: #5c4a34;
+  --color-ink-faint: #6f5c3f;
+  --color-rule: #8a7658;
 
-  --color-paper: #e8e1d2;
-  --color-paper-2: #d8cfbb;
+  /* pigments */
+  --color-vermilion: #9c2b21;
+  --color-vermilion-lit: #b8352c;
+  --color-gold: #7d5a0d;
+  --color-gold-leaf: #b8891f;
+  --color-verdigris: #3f6b52;
+  --color-lapis: #2b4570;
 
-  --color-stamp: #c0322b;
-  --color-stamp-bright: #e5484d;
-  --color-amber: #f0a92b;
-  --color-verdant: #38a06a;
+  /* sealing wax */
+  --color-wax: #8e1f1a;
+  --color-wax-lit: #c4423a;
+  --color-wax-dark: #5e120f;
 
-  --font-display: var(--font-instrument), 'Iowan Old Style', Georgia, serif;
-  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, monospace;
+  --font-black: var(--font-fraktur), 'UnifrakturMaguntia', serif;
+  --font-title: var(--font-cinzel), 'Trajan Pro', Georgia, serif;
+  --font-body: var(--font-garamond), 'EB Garamond', Garamond, Georgia, serif;
 }
 
 @layer base {
   :root {
-    color-scheme: dark;
+    /* A manuscript is parchment. There is no night mode for the 15th century. */
+    color-scheme: light;
   }
 
   html {
@@ -33,87 +51,191 @@
   }
 
   body {
-    background-color: var(--color-ink);
-    color: var(--color-bone);
-    font-family: var(--font-sans);
+    background-color: var(--color-vellum);
+    color: var(--color-ink);
+    font-family: var(--font-body);
+    font-size: 1.0625rem;
+    line-height: 1.65;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    font-variant-numeric: oldstyle-nums;
   }
 
   ::selection {
-    background: var(--color-stamp);
-    color: var(--color-bone);
+    background: var(--color-vermilion);
+    color: var(--color-vellum-lit);
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-amber);
+    outline: 2px solid var(--color-vermilion);
     outline-offset: 3px;
-    border-radius: 2px;
   }
 }
 
 @layer utilities {
-  /* Faint film grain so the flat blacks don't look like a default template. */
-  .grain::after {
+  /* ---------------------------------------------------------- the page itself */
+
+  /* Stains, fibres and a faint tooth. Layered so it never tiles visibly. */
+  .parchment {
+    background-color: var(--color-vellum);
+    background-image:
+      /* the lit centre of the leaf, darkening toward the edges */
+      radial-gradient(ellipse at 50% 40%, rgba(255, 252, 241, 0.72), transparent 60%),
+      radial-gradient(ellipse at 6% 3%, rgba(142, 106, 52, 0.26), transparent 34%),
+      radial-gradient(ellipse at 96% 10%, rgba(122, 90, 42, 0.22), transparent 30%),
+      radial-gradient(ellipse at 78% 92%, rgba(134, 100, 48, 0.24), transparent 32%),
+      radial-gradient(ellipse at 14% 78%, rgba(118, 88, 42, 0.2), transparent 28%),
+      /* age at the extremities */
+      radial-gradient(ellipse at 50% 50%, transparent 56%, rgba(122, 92, 46, 0.13) 100%);
+  }
+
+  .fibres::before {
     content: '';
     position: fixed;
     inset: 0;
-    z-index: 60;
+    z-index: 0;
     pointer-events: none;
-    opacity: 0.035;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+    opacity: 0.5;
+    mix-blend-mode: multiply;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.72' numOctaves='4' seed='7'/%3E%3CfeColorMatrix values='0 0 0 0 0.42 0 0 0 0 0.33 0 0 0 0 0.18 0 0 0 0.09 0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23f)'/%3E%3C/svg%3E");
   }
 
-  .rule {
-    border-color: color-mix(in srgb, var(--color-bone) 12%, transparent);
+  /* Ruled like a scribe's page: faint lines to write between. */
+  .ruled {
+    background-image: repeating-linear-gradient(
+      to bottom,
+      transparent 0,
+      transparent 1.62rem,
+      rgba(138, 118, 88, 0.16) 1.62rem,
+      rgba(138, 118, 88, 0.16) calc(1.62rem + 1px)
+    );
   }
 
-  .rule-paper {
-    border-color: color-mix(in srgb, #2a2118 22%, transparent);
+  /* ------------------------------------------------------------------- type */
+
+  .blackletter {
+    font-family: var(--font-black);
+    font-weight: 400;
+    line-height: 1.05;
   }
 
-  .label-caps {
-    font-family: var(--font-mono);
-    font-size: 0.6875rem;
-    letter-spacing: 0.18em;
+  .titling {
+    font-family: var(--font-title);
+    letter-spacing: 0.14em;
     text-transform: uppercase;
   }
 
+  .rubric {
+    font-family: var(--font-title);
+    font-size: 0.6875rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--color-vermilion);
+  }
+
   .tabular {
-    font-variant-numeric: tabular-nums;
+    font-variant-numeric: lining-nums tabular-nums;
   }
 
-  .paper-stock {
-    background-color: var(--color-paper);
-    background-image:
-      radial-gradient(circle at 12% 8%, rgba(160, 132, 88, 0.18), transparent 42%),
-      radial-gradient(circle at 88% 92%, rgba(140, 110, 70, 0.14), transparent 46%),
-      repeating-linear-gradient(
-        0deg,
-        rgba(120, 96, 60, 0.045) 0px,
-        rgba(120, 96, 60, 0.045) 1px,
-        transparent 1px,
-        transparent 4px
-      );
+  .lining {
+    font-variant-numeric: lining-nums;
   }
 
-  .animate-rise {
-    animation: rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  /* An illuminated initial: vermilion capital, squared off, set into the text. */
+  /*
+   * A versal capital in Roman letterforms, not blackletter. A blackletter I is
+   * indistinguishable from a J at this size, and the first letter of a sentence
+   * is the one letter that must never be a guess.
+   */
+  .dropcap::first-letter {
+    float: left;
+    font-family: var(--font-title);
+    font-weight: 600;
+    font-size: 3.05em;
+    line-height: 0.86;
+    margin: 0.04em 0.14em -0.04em 0;
+    color: var(--color-vermilion);
+    text-shadow: 0 1px 0 rgba(255, 250, 235, 0.8);
   }
 
-  .animate-stamp {
-    animation: stamp 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) 0.25s both;
+  /* ------------------------------------------------------------- ornaments */
+
+  .rule-ink {
+    border-color: rgba(90, 72, 46, 0.34);
   }
 
-  .animate-fade {
-    animation: fade 0.6s ease both;
+  .rule-faint {
+    border-color: rgba(138, 118, 88, 0.3);
+  }
+
+  /* Double rule, as a manuscript frames a block of text. */
+  .double-rule {
+    border-top: 3px double rgba(90, 72, 46, 0.42);
+  }
+
+  /* --------------------------------------------------------------- the wax */
+
+  .wax-seal {
+    position: relative;
+    display: grid;
+    place-items: center;
+    width: var(--seal-size, 108px);
+    height: var(--seal-size, 108px);
+    color: rgba(255, 232, 220, 0.92);
+    /* Irregular, because wax is poured and never round. */
+    border-radius: 46% 54% 52% 48% / 50% 46% 54% 50%;
+    background:
+      radial-gradient(circle at 34% 28%, var(--color-wax-lit) 0%, transparent 46%),
+      radial-gradient(circle at 68% 76%, var(--color-wax-dark) 0%, transparent 52%),
+      var(--color-wax);
+    box-shadow:
+      inset 0 2px 5px rgba(255, 190, 175, 0.42),
+      inset 0 -3px 7px rgba(50, 8, 6, 0.62),
+      inset 0 0 0 6px rgba(94, 18, 15, 0.28),
+      0 4px 10px rgba(60, 30, 12, 0.42);
+  }
+
+  /* The pressed rim of the signet. */
+  .wax-seal::before {
+    content: '';
+    position: absolute;
+    inset: 9%;
+    border-radius: inherit;
+    box-shadow:
+      inset 0 0 0 2px rgba(60, 12, 10, 0.4),
+      inset 0 2px 4px rgba(255, 180, 165, 0.24);
+  }
+
+  .wax-seal > * {
+    position: relative;
+    text-shadow:
+      0 -1px 0 rgba(60, 12, 10, 0.75),
+      0 1px 0 rgba(255, 190, 175, 0.3);
+  }
+
+  /* ----------------------------------------------------------- motion */
+
+  .rise {
+    animation: rise 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .unfurl {
+    animation: unfurl 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .press {
+    animation: press 0.55s cubic-bezier(0.22, 1.5, 0.4, 1) 0.3s both;
+  }
+
+  .fade {
+    animation: fade 0.7s ease both;
   }
 }
 
 @keyframes rise {
   from {
     opacity: 0;
-    transform: translateY(14px);
+    transform: translateY(16px);
   }
   to {
     opacity: 1;
@@ -121,17 +243,32 @@
   }
 }
 
-@keyframes stamp {
+/* The letter opens. */
+@keyframes unfurl {
+  from {
+    opacity: 0;
+    transform: perspective(1400px) rotateX(-14deg) translateY(28px);
+    transform-origin: top center;
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* The signet comes down into the wax. */
+@keyframes press {
   0% {
     opacity: 0;
-    transform: rotate(-14deg) scale(2.4);
+    transform: scale(2.1) rotate(-16deg);
   }
-  70% {
-    opacity: 0.95;
+  62% {
+    opacity: 1;
+    transform: scale(0.94) rotate(-7deg);
   }
   100% {
     opacity: 1;
-    transform: rotate(-8deg) scale(1);
+    transform: scale(1) rotate(-7deg);
   }
 }
 
@@ -145,9 +282,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .animate-rise,
-  .animate-stamp,
-  .animate-fade {
+  .rise,
+  .unfurl,
+  .press,
+  .fade {
     animation: none;
   }
 }

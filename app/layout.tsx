@@ -1,25 +1,32 @@
 import type { Metadata, Viewport } from 'next';
-import { Inter, Instrument_Serif, JetBrains_Mono } from 'next/font/google';
+import { Cinzel, EB_Garamond, UnifrakturMaguntia } from 'next/font/google';
 
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-inter', display: 'swap' });
-
-const instrument = Instrument_Serif({
+/** Blackletter, for display only — it is beautiful and unreadable in quantity. */
+const fraktur = UnifrakturMaguntia({
   subsets: ['latin'],
   weight: '400',
-  variable: '--font-instrument',
+  variable: '--font-fraktur',
   display: 'swap',
 });
 
-const mono = JetBrains_Mono({
+/** Roman inscriptional capitals: the Renaissance revival of Trajan's column. */
+const cinzel = Cinzel({
   subsets: ['latin'],
-  variable: '--font-mono-face',
+  variable: '--font-cinzel',
+  display: 'swap',
+});
+
+/** Claude Garamond, 1540-ish. The text face this whole thing is set in. */
+const garamond = EB_Garamond({
+  subsets: ['latin'],
+  variable: '--font-garamond',
   display: 'swap',
 });
 
 const description =
-  'Grimyapper judges startup ideas. If it is an AI startup, it gets a real rubric score and a suspiciously precise 12-month projection. If it is not, it gets a death certificate.';
+  'Grimyapper weighs ventures. Those built upon thinking engines are assayed against a rubric of seven virtues and a reckoning of twelve months. All others are issued a sealed decree of death.';
 
 export const metadata: Metadata = {
   title: 'Grimyapper — Should This Exist?',
@@ -34,13 +41,16 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: '#09090a',
+  themeColor: '#e9dfc6',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${inter.variable} ${instrument.variable} ${mono.variable}`}>
-      <body className="grain min-h-dvh antialiased">{children}</body>
+    <html
+      lang="en"
+      className={`${fraktur.variable} ${cinzel.variable} ${garamond.variable}`}
+    >
+      <body className="parchment fibres min-h-dvh antialiased">{children}</body>
     </html>
   );
 }
