@@ -1,5 +1,7 @@
 # Grimyapper — *Should This Exist?*
 
+**Live: [grimyapper.vercel.app](https://grimyapper.vercel.app)**
+
 A single-page app that judges startup ideas, and has a split personality about it.
 
 - **Pitch an AI startup** → it gets evaluated seriously: a seven-axis rubric, a composite
@@ -43,7 +45,14 @@ npm run dev                    # http://localhost:3000
 | `DAILY_JUDGEMENT_CAP` | no | `1500` | Hard ceiling on judgements per UTC day, per instance. |
 
 On Vercel, set these under **Project → Settings → Environment Variables**. `ANTHROPIC_API_KEY`
-belongs to Production, Preview and Development.
+belongs to Production, Preview and Development, then redeploy.
+
+> **The live deploy needs its key set.** Until `ANTHROPIC_API_KEY` exists in the Vercel project,
+> the page loads and the form works, but every submission returns a 503 — deliberately, so a
+> missing key looks like a missing key and not like an Anthropic outage. Add the key, redeploy,
+> and both branches come alive. While you are in the dashboard, set a spend cap on the key and
+> turn on Vercel's firewall rate limiting for `/api/judge`; those are the two residual items
+> from the security preflight that code in this repo cannot close.
 
 ---
 
