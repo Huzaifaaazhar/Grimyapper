@@ -1,12 +1,16 @@
 import { RUBRIC_AXES, type Rubric, type RubricNotes } from '@/lib/schemas';
 import { RUBRIC_HINTS, RUBRIC_LABELS, RUBRIC_WEIGHTS } from '@/lib/scoring';
 
-/** One hue, light→dark by magnitude: a sequential ramp, not eight identities. */
+/**
+ * A single near-neutral ramp, dim→bright by magnitude. Deliberately NOT amber or
+ * green: those are the score band's status colours and reusing them here would
+ * make seven ordinary axes look like seven warnings.
+ */
 function toneFor(value: number): string {
   const t = Math.max(0, Math.min(10, value)) / 10;
-  const lightness = 0.42 + t * 0.26;
-  const chroma = 0.06 + t * 0.09;
-  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} 88)`;
+  const lightness = 0.46 + t * 0.4;
+  const chroma = 0.012 + t * 0.03;
+  return `oklch(${lightness.toFixed(3)} ${chroma.toFixed(3)} 85)`;
 }
 
 export function RubricBars({ rubric, notes }: { rubric: Rubric; notes: RubricNotes }) {

@@ -53,16 +53,6 @@ export function DeathCertificate({ result, idea }: { result: RejectedResult; ide
             </div>
           </header>
 
-          <div
-            className="animate-stamp pointer-events-none absolute right-2 top-6 select-none sm:right-8 sm:top-10"
-            aria-hidden
-          >
-            <div className="rotate-[-8deg] border-[5px] border-[#c0322b] px-4 py-1.5 opacity-90 sm:px-6 sm:py-2">
-              <span className="font-display text-3xl tracking-[0.12em] text-[#c0322b] sm:text-5xl">
-                REJECTED
-              </span>
-            </div>
-          </div>
 
           <dl className="relative mt-12 space-y-6">
             <Entry label="Deceased">{idea}</Entry>
@@ -71,12 +61,24 @@ export function DeathCertificate({ result, idea }: { result: RejectedResult; ide
             <Entry label="Replaced by">{rejection.ai_that_replaces_it}</Entry>
           </dl>
 
-          <blockquote className="relative mt-10 border-l-4 border-[#c0322b] pl-5">
+          <blockquote className="relative mt-10 max-w-full border-l-4 border-[#c0322b] pl-5 sm:max-w-[62%]">
             <p className="label-caps text-[#7a6a52]">Eulogy</p>
             <p className="mt-2 font-display text-2xl italic leading-snug text-[#1c1611] sm:text-3xl">
               “{rejection.eulogy}”
             </p>
           </blockquote>
+
+          {/* Slammed across the lower right, the way a registrar actually stamps a file. */}
+          <div
+            className="animate-stamp pointer-events-none relative mt-8 flex select-none justify-end sm:absolute sm:bottom-28 sm:right-10 sm:mt-0 sm:block"
+            aria-hidden
+          >
+            <div className="rotate-[-8deg] border-[5px] border-[#c0322b] px-4 py-1.5 opacity-90 sm:px-6 sm:py-2">
+              <span className="font-display text-3xl tracking-[0.12em] text-[#c0322b] sm:text-5xl">
+                REJECTED
+              </span>
+            </div>
+          </div>
 
           <footer className="relative mt-12 flex flex-col gap-4 border-t rule-paper pt-6 sm:flex-row sm:items-end sm:justify-between">
             <div>

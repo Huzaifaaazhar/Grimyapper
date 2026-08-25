@@ -6,9 +6,28 @@ import { JudgeRequestSchema, MAX_IDEA_CHARS } from '@/lib/schemas';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
+/** A judgement is three short calls. Anything longer has hung — stop paying for it. */
+export const maxDuration = 60;
 
 /** Anything bigger than this is not a startup pitch. Reject before parsing. */
 const MAX_BODY_BYTES = 4_000;
+
+/**
+ * Blocks a third-party page from driving this endpoint with a user's browser.
+ * A request with no Origin at all (curl, a script) still gets through — only the
+ * rate limiter can speak to that — but it stops the cheapest form of embedding.
+ */
+function sameOrigin(request: Request): boolean {
+  const origin = request.headers.get('origin');
+  if (!origin) return true;
+  const host = request.headers.get('host');
+  if (!host) return false;
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
 
 const json = (body: unknown, status: number, headers?: Record<string, string>) =>
   NextResponse.json(body, {
@@ -17,6 +36,15 @@ const json = (body: unknown, status: number, headers?: Record<string, string>) =
   });
 
 export async function POST(request: Request) {
+  if (!sameOrigin(request)) {
+    return json({ error: 'Cross-origin submissions are not accepted.' }, 403);
+  }
+
+  const declared = Number(request.headers.get('content-length') ?? 0);
+  if (declared > MAX_BODY_BYTES) {
+    return json({ error: 'That is far too much pitch.' }, 413);
+  }
+
   const rate = checkRateLimit(clientIp(request.headers));
   if (!rate.ok) {
     return json(
@@ -31,9 +59,10 @@ export async function POST(request: Request) {
     );
   }
 
-  const declared = Number(request.headers.get('content-length') ?? 0);
-  if (declared > MAX_BODY_BYTES) {
-    return json({ error: 'That is far too much pitch.' }, 413);
+  if (!process.env.ANTHROPIC_API_KEY) {
+    // Distinguished from an upstream failure so a misconfigured deploy is obvious.
+    console.error('[judge] ANTHROPIC_API_KEY is not configured');
+    return json({ error: 'The bureau is not configured. No judgements today.' }, 503);
   }
 
   let body: unknown;

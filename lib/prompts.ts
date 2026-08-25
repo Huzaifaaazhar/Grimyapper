@@ -1,3 +1,5 @@
+import 'server-only';
+
 import type { JudgeRequest } from './schemas';
 
 /**
