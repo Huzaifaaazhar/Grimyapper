@@ -1,0 +1,153 @@
+@import 'tailwindcss';
+
+@theme {
+  --color-ink: #09090a;
+  --color-ink-2: #0f0f11;
+  --color-ink-3: #16161a;
+  --color-ink-4: #1e1e23;
+
+  --color-bone: #ece5d8;
+  --color-bone-2: #c5bdac;
+  --color-bone-3: #8a8377;
+
+  --color-paper: #e8e1d2;
+  --color-paper-2: #d8cfbb;
+
+  --color-stamp: #c0322b;
+  --color-stamp-bright: #e5484d;
+  --color-amber: #f0a92b;
+  --color-verdant: #38a06a;
+
+  --font-display: var(--font-instrument), 'Iowan Old Style', Georgia, serif;
+  --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: var(--font-mono-face), ui-monospace, 'SF Mono', Menlo, monospace;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    background-color: var(--color-ink);
+    color: var(--color-bone);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background: var(--color-stamp);
+    color: var(--color-bone);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-amber);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+@layer utilities {
+  /* Faint film grain so the flat blacks don't look like a default template. */
+  .grain::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  .rule {
+    border-color: color-mix(in srgb, var(--color-bone) 12%, transparent);
+  }
+
+  .rule-paper {
+    border-color: color-mix(in srgb, #2a2118 22%, transparent);
+  }
+
+  .label-caps {
+    font-family: var(--font-mono);
+    font-size: 0.6875rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+  }
+
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .paper-stock {
+    background-color: var(--color-paper);
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(160, 132, 88, 0.18), transparent 42%),
+      radial-gradient(circle at 88% 92%, rgba(140, 110, 70, 0.14), transparent 46%),
+      repeating-linear-gradient(
+        0deg,
+        rgba(120, 96, 60, 0.045) 0px,
+        rgba(120, 96, 60, 0.045) 1px,
+        transparent 1px,
+        transparent 4px
+      );
+  }
+
+  .animate-rise {
+    animation: rise 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  .animate-stamp {
+    animation: stamp 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) 0.25s both;
+  }
+
+  .animate-fade {
+    animation: fade 0.6s ease both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes stamp {
+  0% {
+    opacity: 0;
+    transform: rotate(-14deg) scale(2.4);
+  }
+  70% {
+    opacity: 0.95;
+  }
+  100% {
+    opacity: 1;
+    transform: rotate(-8deg) scale(1);
+  }
+}
+
+@keyframes fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-stamp,
+  .animate-fade {
+    animation: none;
+  }
+}
