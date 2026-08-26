@@ -7,7 +7,7 @@ on:
 
 jobs:
   check:
-    name: Typecheck, lint, unit tests
+    name: Typecheck, lint, tests, eval
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -15,36 +15,28 @@ jobs:
         with:
           node-version: 22
           cache: npm
+
       - run: npm ci
       - run: npm run typecheck
       - run: npm run lint
       - run: npm test
-      - run: npm run build
-        env:
-          # The build must not need a real key. If this step ever starts failing
-          # without one, something is calling the API at build time.
-          ANTHROPIC_API_KEY: ''
 
-  eval:
-    name: Prompt-drift guard
-    runs-on: ubuntu-latest
-    needs: check
-    # Makes real API calls. Skipped on forks, which have no access to the secret.
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - name: Run the golden-set eval
-        env:
-          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      # The whole engine is local, so the eval needs no secret and no network.
+      # It gates every commit rather than being the expensive job people skip.
+      - name: Golden-set eval and drift guard
+        run: npm run eval
+
+      # The shipped weights must match what the corpus and features produce.
+      # If someone edits a pattern or adds training data without retraining,
+      # this fails rather than letting the model silently go stale.
+      - name: Weights are in step with the corpus
         run: |
-          if [ -z "$ANTHROPIC_API_KEY" ]; then
-            echo "::warning::ANTHROPIC_API_KEY not set — skipping the live eval."
-            echo "Add it under Settings → Secrets → Actions to arm the prompt-drift guard."
-            exit 0
+          cp lib/model/weights.json /tmp/weights-committed.json
+          npm run train
+          if ! diff -q /tmp/weights-committed.json lib/model/weights.json > /dev/null; then
+            echo "::error::lib/model/weights.json is stale — run \`npm run train\` and commit the result."
+            exit 1
           fi
-          npm run eval
+          echo "weights.json matches a fresh training run"
+
+      - run: npm run build

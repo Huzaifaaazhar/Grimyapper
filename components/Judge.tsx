@@ -132,13 +132,14 @@ export function Judge() {
       <footer className="mt-24">
         <Lozenges />
         <p className="mx-auto mt-7 max-w-2xl text-center text-sm leading-relaxed text-ink-soft">
-          Grimyapper is a jest with real machinery beneath it: a classifier, seven virtues scored
-          in code, and a deterministic reckoning of unit economics. It is not counsel upon money,
-          and it has never once been right.
+          Grimyapper is a jest with real machinery beneath it: a classifier trained on labelled
+          petitions, seven virtues scored by a transparent model, and a deterministic reckoning of
+          unit economics. It is not counsel upon money, and it has never once been right.
         </p>
         <p className="mx-auto mt-3.5 max-w-2xl text-center text-xs leading-relaxed text-ink-faint">
-          What becomes of thy petition: it is sent to Anthropic&rsquo;s API to be judged, and
-          nothing more. Nothing thou writest is stored, logged, or kept once the answer is drawn.
+          What becomes of thy petition: nothing. It is judged here, upon this very machine, by a
+          model of some seventeen kilobytes that never leaves it. Thy words are sent to no other
+          house, stored nowhere, written to no log, and forgotten the instant the answer is drawn.
           There is no account, no ledger of record, and no reckoning of visitors upon this page.
         </p>
       </footer>

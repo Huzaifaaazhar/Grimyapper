@@ -10,10 +10,10 @@
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "eval": "NODE_OPTIONS='--conditions=react-server' tsx evals/run.ts"
+    "eval": "NODE_OPTIONS='--conditions=react-server' tsx evals/run.ts",
+    "train": "tsx scripts/train.ts"
   },
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.120.0",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

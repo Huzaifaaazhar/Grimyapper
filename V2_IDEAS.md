@@ -17,13 +17,36 @@ Nothing in this file is a commitment.
 - **Saved history / permalinks.** `/judgement/{id}` so a verdict can be linked rather than
   screenshotted. Same dependency: storage.
 
+## Came up after moving to a local model
+
+- **Grow the corpus.** 287 labelled petitions is small. The clearest path to a better classifier
+  is another few hundred, especially in the classes that still fail: consumer generative
+  products framed as retail, and plain software that merely sounds technical.
+- **Active learning.** Log only the *probability* of each judgement (never the petition text)
+  and surface the ones nearest the 0.45 boundary. Those are the examples worth labelling next,
+  and labelling them is worth more than any amount of feature tinkering.
+- **Calibration.** Reported confidence is distance from the boundary, which is honest but not
+  calibrated. Platt scaling or isotonic regression on a held-out split would make "93% certain"
+  mean what it says.
+- **Per-axis rubric calibration.** The rubric model is hand-weighted. A set of human-labelled
+  rubric scores would let it be fitted rather than asserted, and would give a real error bar per
+  axis instead of an opinion.
+- **A small local LLM for the decree only.** Ollama with Llama 3.2 3B or Qwen2.5 1.5B behind an
+  `OLLAMA_URL` env var, used solely for the lament, with the composed corpus as the fallback
+  whenever it is absent. Keeps the public deploy working while giving genuinely novel prose
+  wherever someone runs it themselves.
+- **Character n-grams.** Word bigrams miss morphology. Character 3–5 grams would help with
+  typos, compounds and non-English petitions, at the cost of a larger weights file.
+- **Publish the confusion matrix.** The training script already computes it; a small page
+  showing which petitions the model gets wrong would be the most honest thing on the site.
+
 ## Came up while building
 
-- **Distributed rate limiting.** The current limiter is per-instance (see the README's known
-  limitation). Upstash Redis or Vercel KV would make the daily cap a real quota instead of a
-  per-instance budget guard.
-- **Streaming the verdict.** The rejector's output would land much harder revealed line by line —
-  cause of death, then time of death, then the eulogy. v1 waits for the whole thing.
+- **Distributed rate limiting.** The current limiter is per-instance. This mattered far more when
+  every request spent money; now it only guards CPU, which is why it has dropped down the list.
+- **Revealing the decree line by line.** It would land harder unsealed in order — the undoing,
+  then the hour, then the lament. Judgement is now instant, so this would be pure theatre, which
+  is arguably the point.
 - **A "defend yourself" round.** After a rejection, let the founder submit one sentence of rebuttal
   and have the registrar reconsider (it never does).
 - **Sensitivity sliders on the projection.** Let the reader drag growth or churn and watch the

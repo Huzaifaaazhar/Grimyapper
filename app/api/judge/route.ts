@@ -6,8 +6,6 @@ import { JudgeRequestSchema, MAX_IDEA_CHARS } from '@/lib/schemas';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
-/** A judgement is three short calls. Anything longer has hung — stop paying for it. */
-export const maxDuration = 60;
 
 /** Anything bigger than this is not a startup pitch. Reject before parsing. */
 const MAX_BODY_BYTES = 4_000;
@@ -59,12 +57,6 @@ export async function POST(request: Request) {
     );
   }
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    // Distinguished from an upstream failure so a misconfigured deploy is obvious.
-    console.error('[judge] ANTHROPIC_API_KEY is not configured');
-    return json({ error: 'The bureau is not configured. No judgements today.' }, 503);
-  }
-
   let body: unknown;
   try {
     const text = await request.text();
@@ -89,15 +81,15 @@ export async function POST(request: Request) {
   }
 
   try {
-    const result = await judge(parsed.data);
-    return json(result, 200);
+    // Synchronous: the whole court is arithmetic running in this process.
+    return json(judge(parsed.data), 200);
   } catch (err) {
-    // Fail closed. No model text, no stack, no key, nothing internal leaves here.
+    // Fail closed. No stack, no internals, nothing but a sentence.
     const stage = err instanceof JudgeError ? err.stage : 'unknown';
     console.error(`[judge] failed at stage=${stage}`);
     return json(
-      { error: 'The bureau is temporarily unable to reach the afterlife. Try again in a moment.' },
-      502,
+      { error: 'The court is unable to reach a judgement. Try again in a moment.' },
+      500,
     );
   }
 }
