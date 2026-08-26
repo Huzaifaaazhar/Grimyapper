@@ -5,7 +5,11 @@ const nextConfig = {
   // Satori needs the real font file at render time, and the tracer will not
   // find it through a runtime readFileSync. Without this the OpenGraph image
   // falls back to a sans and stops looking like a decree.
+  // The page is listed alongside the image route because Next imports the
+  // opengraph-image module while resolving the page's metadata, so the fonts
+  // have to be present in both bundles.
   outputFileTracingIncludes: {
+    '/j/[token]': ['./assets/fonts/**'],
     '/j/[token]/opengraph-image': ['./assets/fonts/**'],
   },
   async headers() {

@@ -70,3 +70,33 @@ jobs:
           status=$?
           kill $server 2>/dev/null || true
           exit $status
+
+      # A page must not fall over because an asset only one route needs is
+      # missing. This is the bug that blanked permalinks in production: the
+      # opengraph-image module read its fonts at import time, Next imports that
+      # module to resolve the *page's* metadata, and the page's bundle carried
+      # no fonts. It never failed locally, where the repository is the cwd.
+      - name: Page renders without the share-image fonts
+        env:
+          VERCEL_PROJECT_PRODUCTION_URL: grimyapper.vercel.app
+        run: |
+          mv assets/fonts /tmp/fonts-hidden
+          npx next start -p 3001 &
+          server=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3001/ > /dev/null && break
+            sleep 1
+          done
+          token=$(node -e "process.stdout.write(Buffer.from('A bakery selling sourdough.\t\t').toString('base64url'))")
+          html=$(curl -sf "http://127.0.0.1:3001/j/$token" || true)
+          kill $server 2>/dev/null || true
+          mv /tmp/fonts-hidden assets/fonts
+          if [ -z "$html" ]; then
+            echo "::error::the permalink did not render at all without the fonts"
+            exit 1
+          fi
+          if printf '%s' "$html" | grep -q 'data-dgst'; then
+            echo "::error::a React boundary failed — something on the page reads an asset at import time"
+            exit 1
+          fi
+          echo "page renders independently of the share-image fonts"

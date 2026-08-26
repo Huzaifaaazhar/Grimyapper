@@ -291,6 +291,15 @@ It found a second bug on its first run: `/j/not-a-real-token` is valid base64url
 `TextDecoder` substitutes replacement characters rather than rejecting — so a typo'd link decoded
 to mojibake, passed validation, and got a straight-faced judgement instead of a 404.
 
+**The actual root cause took two attempts.** `metadataBase` was a real omission and worth fixing,
+but it was not what broke the page. The share-image module read its fonts with `readFileSync` at
+*module scope*, and Next imports that module to resolve the **page's** metadata — so the read ran
+inside the page's serverless function, which carries no fonts. It threw ENOENT, the metadata
+promise rejected, and the page blanked. Locally `process.cwd()` is the repository, where the
+fonts obviously exist, so it could never fail. The fonts are now loaded lazily inside the
+handler, and CI hides `assets/fonts` and asserts the page still renders — because importing a
+module must not touch the filesystem.
+
 ### /model
 The held-out metrics, the confusion matrix, the calibration table, every learned signal weight,
 the per-axis rubric error, the petitions it gets wrong, and where live judgements land on the

@@ -26,14 +26,31 @@ import { BAND_COLORS } from '@/lib/scoring';
  * file never changes, and re-reading it per request would be pure waste.
  */
 
-const fontDir = path.join(process.cwd(), 'assets', 'fonts');
-const CRIMSON_REGULAR = readFileSync(path.join(fontDir, 'CrimsonPro-Regular.ttf'));
-const CRIMSON_BOLD = readFileSync(path.join(fontDir, 'CrimsonPro-Bold.ttf'));
+/*
+ * Read lazily, inside the handler, and never at module scope.
+ *
+ * This module is imported by more than the image route: Next reads the `size`,
+ * `alt` and `contentType` exports below while resolving the *page's* metadata.
+ * A module-scope readFileSync therefore ran inside the page's serverless
+ * function too — which does not carry the font files — so importing it threw
+ * ENOENT, the metadata promise rejected, and the permalink blanked on hydration
+ * with a Server Components render error.
+ *
+ * It never failed locally because there process.cwd() is the repository, where
+ * the fonts obviously exist. Importing a module must not touch the filesystem.
+ */
+let fonts: Array<{ name: string; data: Buffer; weight: 400 | 700; style: 'normal' }> | null = null;
 
-const FONTS = [
-  { name: 'Crimson', data: CRIMSON_REGULAR, weight: 400 as const, style: 'normal' as const },
-  { name: 'Crimson', data: CRIMSON_BOLD, weight: 700 as const, style: 'normal' as const },
-];
+function loadFonts() {
+  if (!fonts) {
+    const dir = path.join(process.cwd(), 'assets', 'fonts');
+    fonts = [
+      { name: 'Crimson', data: readFileSync(path.join(dir, 'CrimsonPro-Regular.ttf')), weight: 400, style: 'normal' },
+      { name: 'Crimson', data: readFileSync(path.join(dir, 'CrimsonPro-Bold.ttf')), weight: 700, style: 'normal' },
+    ];
+  }
+  return fonts;
+}
 export const runtime = 'nodejs';
 export const alt = 'A judgement of the court of Grimyapper';
 export const size = { width: 1200, height: 630 };
@@ -86,7 +103,7 @@ export default async function Image({ params }: { params: Promise<{ token: strin
           <div style={{ fontSize: 28, color: INK_SOFT, marginTop: 16 }}>No such roll.</div>
         </div>
       ),
-      { ...size, fonts: FONTS, headers: NO_WORK_TWICE },
+      { ...size, fonts: loadFonts(), headers: NO_WORK_TWICE },
     );
   }
 
@@ -270,6 +287,6 @@ export default async function Image({ params }: { params: Promise<{ token: strin
         </div>
       </div>
     ),
-    { ...size, fonts: FONTS, headers: NO_WORK_TWICE },
+    { ...size, fonts: loadFonts(), headers: NO_WORK_TWICE },
   );
 }
