@@ -19,10 +19,26 @@ type Props = { params: Promise<{ token: string }> };
 
 const truncate = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
 
+/**
+ * Defence in depth, added after a relative `og:image` with no `metadataBase`
+ * threw here in production. The body had rendered perfectly; the rejected
+ * metadata promise alone was enough to blank the page on hydration.
+ *
+ * Metadata is decoration. It must never be able to take the page down, so
+ * anything that throws in here degrades to a title and nothing more.
+ */
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-  const { token } = await params;
+  try {
+    return await buildMetadata(await params);
+  } catch (error) {
+    console.error('[permalink] metadata failed', error);
+    return { title: 'Grimyapper — a judgement', robots: { index: false, follow: false } };
+  }
+}
+
+async function buildMetadata({ token }: { token: string }): Promise<Metadata> {
   const petition = decodePetition(token);
-  if (!petition) return { title: 'Grimyapper — no such roll' };
+  if (!petition) return { title: 'Grimyapper — no such roll', robots: { index: false, follow: false } };
 
   const result = judge(petition);
   const guard = guardPermalink(petition);

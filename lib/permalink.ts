@@ -26,7 +26,14 @@ function fromBase64Url(input: string): string {
   const padded = input.replace(/-/g, '+').replace(/_/g, '/');
   const binary = atob(padded + '='.repeat((4 - (padded.length % 4)) % 4));
   const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
-  return new TextDecoder().decode(bytes);
+  /*
+   * `fatal: true` matters more than it looks. The default decoder silently
+   * substitutes U+FFFD for invalid bytes, so a typo'd link like
+   * `/j/not-a-real-token` decoded to mojibake, passed the length check, and got
+   * a straight-faced judgement instead of a 404. Throwing here is what turns
+   * "not valid UTF-8" into "not a real roll".
+   */
+  return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
 /** The three fields, tab-separated — far shorter than JSON for the same content. */
@@ -48,6 +55,13 @@ export function decodePetition(token: string): JudgeRequest | null {
   } catch {
     return null;
   }
+
+  /*
+   * Random bytes can still happen to be valid UTF-8. A petition is prose, so
+   * anything carrying control characters or a replacement char is not one,
+   * whatever the decoder made of it.
+   */
+  if (/[\u0000-\u0008\u000b-\u001f\u007f\ufffd]/.test(raw)) return null;
 
   const [idea = '', name = '', customer = ''] = raw.split('\t');
   if (idea.length > MAX_IDEA_CHARS || name.length > MAX_NAME_CHARS || customer.length > MAX_CUSTOMER_CHARS) {

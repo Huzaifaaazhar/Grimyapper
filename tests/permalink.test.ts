@@ -38,6 +38,21 @@ describe('permalink encoding', () => {
     }
   });
 
+  it('refuses junk that happens to be in the base64url alphabet', () => {
+    // Regression: `/j/not-a-real-token` is valid base64url, and the default
+    // TextDecoder substituted U+FFFD rather than rejecting — so a typo'd link
+    // decoded to mojibake, passed the length check, and got a real judgement
+    // instead of a 404.
+    for (const bad of ['not-a-real-token', 'abcdefgh', 'zzzzzzzzzzzz', 'QQQQQQQQ', '____----']) {
+      expect(decodePetition(bad)).toBeNull();
+    }
+  });
+
+  it('refuses a token carrying control characters', () => {
+    const sneaky = Buffer.from('A bakery\u0000selling bread\u0007.\t\t').toString('base64url');
+    expect(decodePetition(sneaky)).toBeNull();
+  });
+
   it('holds a crafted token to the same limits as the form', () => {
     // The token comes from a URL a stranger controls, so a hand-built one must
     // not be able to smuggle in a longer petition than the form would accept.

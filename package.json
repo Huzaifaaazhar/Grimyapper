@@ -12,7 +12,8 @@
     "test": "vitest run",
     "eval": "NODE_OPTIONS='--conditions=react-server' tsx evals/run.ts",
     "train": "tsx scripts/train.ts",
-    "mine": "NODE_OPTIONS='--conditions=react-server' tsx scripts/mine.ts"
+    "mine": "NODE_OPTIONS='--conditions=react-server' tsx scripts/mine.ts",
+    "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
     "next": "^15.5.4",

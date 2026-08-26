@@ -67,6 +67,7 @@ in-process, so a clone starts working immediately and the deployed site needs no
 | `npm run eval` | The golden-set eval harness and drift guard. Runs offline in about a tenth of a second. |
 | `npm run train` | Refits the classifier and rewrites the three model artefacts. |
 | `npm run mine` | Ranks known petitions by distance from the decision boundary — the next ones worth labelling. |
+| `npm run smoke` | Checks a running server actually renders. `BASE_URL=https://… npm run smoke` points it at a deploy. |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 
@@ -270,6 +271,25 @@ what the definition says. A rigged "it never works" would have been easier and m
 Growth, conversion, price and churn are draggable and the twelve months re-run instantly. The
 most honest way to present numbers this invented is to hand over the dials — and to report the
 range the twelfth month lands in when growth and churn move by a fifth.
+
+### A smoke test, because a 200 is not proof
+
+`npm run smoke` boots the built server and asserts on the *markup*, not the status code.
+
+It exists because of one specific bug. A relative `og:image` with no `metadataBase` resolves to
+localhost in development — a warning — and **throws in production**. The page body rendered
+perfectly, so the build, the unit tests, the eval and a `curl` all passed, while the rejected
+metadata promise blanked the page on hydration with "Application error: a client-side exception
+has occurred".
+
+React leaves two fingerprints when that happens, and both are cheap to look for:
+`data-dgst` on a failed boundary, and `"error":"$Z"` for a rejected promise. Neither appears in
+a status code. CI runs the smoke test with `VERCEL_PROJECT_PRODUCTION_URL` set so metadata
+resolves the way it does on the deploy, which is the half that only ever broke remotely.
+
+It found a second bug on its first run: `/j/not-a-real-token` is valid base64url, and the default
+`TextDecoder` substitutes replacement characters rather than rejecting — so a typo'd link decoded
+to mojibake, passed validation, and got a straight-faced judgement instead of a 404.
 
 ### /model
 The held-out metrics, the confusion matrix, the calibration table, every learned signal weight,

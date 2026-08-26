@@ -46,3 +46,27 @@ jobs:
           exit $stale
 
       - run: npm run build
+
+      # Boot the built server and check the pages actually render.
+      #
+      # Added after a relative og:image with no metadataBase threw inside
+      # generateMetadata in production: the body rendered perfectly, every other
+      # check passed, and the page still blanked on hydration. The status code
+      # said 200 the whole time, so this asserts on the markup instead.
+      #
+      # VERCEL_PROJECT_PRODUCTION_URL is set so metadata resolves exactly the
+      # way it does on the deploy, which is the half that only breaks remotely.
+      - name: Smoke test the built server
+        env:
+          VERCEL_PROJECT_PRODUCTION_URL: grimyapper.vercel.app
+        run: |
+          npx next start -p 3000 &
+          server=$!
+          for i in $(seq 1 30); do
+            curl -sf http://127.0.0.1:3000/ > /dev/null && break
+            sleep 1
+          done
+          BASE_URL=http://127.0.0.1:3000 npm run smoke
+          status=$?
+          kill $server 2>/dev/null || true
+          exit $status
