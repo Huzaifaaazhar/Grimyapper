@@ -63,23 +63,36 @@ in-process, so a clone starts working immediately and the deployed site needs no
 |---|---|
 | `npm run dev` | Local dev server |
 | `npm run build` | Production build |
-| `npm test` | 63 unit tests — signals, classifier, rubric, decrees, scoring maths, projection model, rate limiter, schemas. |
+| `npm test` | 90 unit tests — signals, classifier, rubric, decrees, appeals, permalinks, telemetry, rate limiters, scoring maths, projection model, schemas. |
 | `npm run eval` | The golden-set eval harness and drift guard. Runs offline in about a tenth of a second. |
-| `npm run train` | Refits the classifier from the labelled corpus and rewrites `lib/model/weights.json`. |
+| `npm run train` | Refits the classifier and rewrites the three model artefacts. |
+| `npm run mine` | Ranks known petitions by distance from the decision boundary — the next ones worth labelling. |
 | `npm run typecheck` | `tsc --noEmit` |
 | `npm run lint` | ESLint |
 
 ## Environment variables
 
-There are none you need. The only settings are optional abuse limits:
+There are none you need. Everything below is optional.
 
 | Variable | Default | Notes |
 |---|---|---|
 | `RATE_LIMIT_MAX` | `8` | Requests per IP per window. |
 | `RATE_LIMIT_WINDOW_MS` | `60000` | Sliding window length. |
-| `DAILY_JUDGEMENT_CAP` | `1500` | Ceiling on judgements per UTC day, per instance. |
+| `DAILY_JUDGEMENT_CAP` | `1500` | Ceiling on judgements per UTC day. |
+| `UPSTASH_REDIS_REST_URL` | — | Set with the token below to move rate-limit counters into Redis, making the cap a real quota across instances instead of a per-instance guard. |
+| `UPSTASH_REDIS_REST_TOKEN` | — | |
+| `OLLAMA_URL` | — | e.g. `http://127.0.0.1:11434`. Writes the decree's lament with a local model instead of composing it. |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Any small local model will do; it writes one sentence. |
 
 No key, no model download, no provider account. Deploy it and it works.
+
+> **On the local model.** It is optional on purpose. The public deploy runs on serverless
+> functions with no GPU, ~1GB of memory and a cold start per request — a local model cannot live
+> there, and pretending otherwise would be the dishonest option. So the hosted site stays fully
+> composed and deterministic, and anyone running Grimyapper on their own machine gets genuinely
+> novel prose. It is also never applied to permalinks: those re-derive their judgement, and a
+> model would give a different lament each time, so a shared link would stop matching what its
+> author saw.
 
 ---
 
@@ -128,12 +141,22 @@ features separately; the product has to be handed to it.
 
 | | |
 |---|---|
-| Accuracy | **95.1%** |
-| Precision | 95.6% |
-| Recall | 94.2% |
-| F1 | 94.9% |
-| Corpus | 287 labelled petitions, 138 / 149 split |
-| Model size | 17 KB of JSON, checked into git |
+| Accuracy | **93.6%** |
+| Precision | 91.5% |
+| Recall | 95.8% |
+| F1 | 93.6% |
+| Corpus | 388 labelled petitions, 190 / 198 split |
+| Features | 5,098 learned (766 word, 4,332 character) + 21 signals |
+| Model size | 158 KB of JSON, checked into git |
+
+All of it is published at [`/model`](https://grimyapper.vercel.app/model), including the
+confusion matrix, the calibration table, every learned signal weight and the twenty petitions it
+gets wrong.
+
+> The number was 95.1% on a 287-petition corpus and *fell* when the corpus grew. That is not a
+> regression — 101 of the new petitions were chosen precisely because the first model got that
+> kind wrong, so the benchmark got harder. Chasing the old number by removing them would have
+> improved the metric and the product not at all.
 
 The vocabulary is rebuilt from the training split inside every fold — building it over the
 whole corpus first would leak the test fold's vocabulary into the fit and inflate every number
@@ -142,6 +165,16 @@ above.
 **The decision threshold is 0.45, not 0.5.** The definition says an unclear petition is treated
 as engine-built and left to the moat score to judge, so the two errors do not cost the same.
 It also happened to be the best F1 in the sweep.
+
+**Confidence is calibrated, not asserted.** Platt scaling fitted on out-of-fold scores takes the
+Brier score from 0.065 to 0.055, so "93% certain" now means the model was right about 93% of the
+time when it said that. Before, it was distance from the boundary wearing a percent sign.
+
+**Character n-grams are in, and the measurement is worth reading.** On aggregate accuracy they
+are worth nothing — 93.0% with, 93.0% without, at six times the features. But aggregate accuracy
+is not what they were added for. On held-out cases with characters deliberately corrupted they
+are identical up to 10% corruption and worth **+8.4 points at 18%** (83.3% → 91.7%). A narrow
+benefit, measured rather than assumed.
 
 Two findings worth reporting, because the model disagreed with the obvious guess:
 
@@ -156,6 +189,19 @@ A transparent linear model per axis: a base, moved by the same signals the class
 The note under each score is assembled from the terms that actually moved it, so the
 explanation cannot drift away from the arithmetic the way a generated one can. When two terms
 disagree, both are shown.
+
+### Improving it
+
+`npm run mine` ranks every known petition by how close the model came to flipping. A petition at
+p = 0.46 against a 0.45 threshold is a coin toss the model happened to win, and one more label
+there moves the boundary further than fifty more examples of something already handled at 0.99.
+It also lists anything the model gets *confidently* wrong, which is a different and more urgent
+problem — usually a feature firing where it should not.
+
+That is not decoration. Its first run found two confident errors ("a tool that **detects**
+duplicate rows", "**classifies** files by their extension") where the inference patterns were
+firing on ordinary deterministic software. Fixing them took accuracy from 93.0% to 93.6% and left
+zero confident errors behind.
 
 ### The decree
 
@@ -194,6 +240,46 @@ and `lib/metrics.ts`:
 A thin wrapper is still an AI startup — it gets evaluated, and then the moat and wrapper-risk
 axes do the judging.
 
+## What else it does
+
+### Permalinks, with no database
+Every stage of the court is deterministic, so a judgement does not need to be *stored* to be
+linkable. `/j/{token}` carries the petition in the token and re-derives the identical verdict on
+arrival. That is permalinks, saved history and sharing with no storage, no ids, no moderation
+queue and nothing to leak.
+
+It has one cost, named plainly rather than buried: anyone can craft a link containing any text
+and it renders on this site's domain under this site's branding. `lib/permalink-guard.ts` refuses
+to reprint contact details — the doxxing route, and the one with a real victim — and permalinks
+are never indexed, so a crafted link cannot be laundered into a search result. It makes no claim
+to detect abuse in general; that needs a moderation service, which is the honest reason the
+public "wall of rejected ideas" is still not built.
+
+### Share images
+The decree and the assay each render to a 1200×630 PNG through `next/og`, wired to the permalink
+as `og:image`, cached at the edge because the image is a pure function of the token.
+
+### The appeal
+After a rejection the founder may address the court once. The court's line is that it has never
+reconsidered, and the framing keeps the joke — but the mechanism is honest: the rebuttal is
+appended and the classifier genuinely runs again. A rebuttal that redefines *what is being sold*
+wins the appeal; one that merely mentions a model as an ingredient does not, which is exactly
+what the definition says. A rigged "it never works" would have been easier and much worse.
+
+### Sliders on the projection
+Growth, conversion, price and churn are draggable and the twelve months re-run instantly. The
+most honest way to present numbers this invented is to hand over the dials — and to report the
+range the twelfth month lands in when growth and churn move by a fifth.
+
+### /model
+The held-out metrics, the confusion matrix, the calibration table, every learned signal weight,
+the per-axis rubric error, the petitions it gets wrong, and where live judgements land on the
+probability scale. A product that claims to judge accurately should publish how often it does
+not.
+
+The live counter records **probability and branch only** — petition text is never passed to it,
+so there is nothing there that could identify a submission.
+
 ## The eval harness
 
 An AI product whose whole premise is "I evaluate things accurately" should not itself be flaky.
@@ -207,21 +293,27 @@ everyone learns to skip. Six gates, all of which must pass:
 
 | Gate | What it proves |
 |---|---|
-| 1. Routing | Each of the 20 golden cases goes down the right branch. Currently **20/20**. |
+| 1. Routing | Each strictly-expected golden case goes down the right branch. Currently **22/22**. |
 | 2. Judgement | Rubric expectations hold — a thin wrapper cannot score 9 on moat. |
 | 3. Range | Every rubric value, assumption and monthly row inside its bounds; no empty notes. |
 | 4. Arithmetic | Composite weights, band boundaries and the 12-month model still agree. |
 | 5. Determinism | The same petition judged twice is byte-identical; decree variety above floor. |
-| 6. Robustness | Injection attempts, markup, SQL, gibberish, unicode and floods still produce valid output. |
+| 6. Calibration | The rubric stays within 2 points per axis of hand-scored labels. Currently **1.43** overall. |
+
+33 golden cases in all. The other 11 are adversarial and non-English petitions, asserted
+**well-formed rather than routed**: a model trained on English has no business claiming to route
+German correctly, and an injection string is not really either kind of venture. What they must do
+is come back valid, in range and free of echoed input, and that is what is checked.
 
 The golden cases in `evals/cases.ts` are **held out of the training corpus**, and `npm run train`
 exits non-zero if one leaks in — so routing accuracy is always measured on unseen text.
 
 **Drift guards.** The run fails if routing accuracy drops below `ROUTING_ACCURACY_THRESHOLD`
-(0.9), if any assertion fails, or if the arithmetic moves. CI adds a second guard: it retrains
-from scratch and fails if `lib/model/weights.json` differs from the committed file, so nobody
-can edit a pattern or add training data without retraining. Training is deterministic, which is
-what makes that check sound.
+(0.9), if the rubric drifts from its labels, if any assertion fails, or if the arithmetic moves.
+CI adds a second guard: it retrains from scratch and fails if any of the three committed model
+artefacts (`weights.json`, `report.json`, `score-distribution.json`) differs, so nobody can edit
+a pattern or add training data without retraining. Training is deterministic — verified — which
+is what makes that check sound.
 
 Raise the threshold as the model improves; never lower it quietly.
 

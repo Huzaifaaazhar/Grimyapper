@@ -1,7 +1,9 @@
 'use client';
 
+import { AppealForm } from './AppealForm';
 import { Fleuron, Lozenges, WaxSeal } from './Ornaments';
-import type { RejectedResult } from '@/lib/schemas';
+import { useStagedReveal } from '@/lib/useStagedReveal';
+import type { JudgeRequest, JudgeResult, RejectedResult } from '@/lib/schemas';
 
 /** Deterministic, so the same petition always bears the same roll number. */
 function rollNumber(seed: string): string {
@@ -13,17 +15,47 @@ function rollNumber(seed: string): string {
   return `MMXXVI · ${String(Math.abs(h) % 10000).padStart(4, '0')}`;
 }
 
-function Entry({ label, children }: { label: string; children: React.ReactNode }) {
+function Entry({
+  label,
+  shown,
+  children,
+}: {
+  label: string;
+  shown: boolean;
+  children: React.ReactNode;
+}) {
   return (
-    <div className="border-b rule-faint pb-5">
+    <div
+      className="border-b rule-faint pb-5 transition-opacity duration-500"
+      style={{ opacity: shown ? 1 : 0 }}
+      aria-hidden={!shown}
+    >
       <dt className="titling text-[0.66rem] text-vermilion">{label}</dt>
       <dd className="mt-2 text-xl leading-snug text-ink sm:text-[1.4rem]">{children}</dd>
     </div>
   );
 }
 
-export function DeathCertificate({ result, idea }: { result: RejectedResult; idea: string }) {
+export function DeathCertificate({
+  result,
+  idea,
+  petition,
+  onAppealUpheld,
+}: {
+  result: RejectedResult;
+  idea: string;
+  petition?: JudgeRequest;
+  onAppealUpheld?: (judgement: JudgeResult, moved: string) => void;
+}) {
   const { rejection } = result;
+
+  /*
+   * The decree unseals in order: the venture, the undoing, the hour, the
+   * successor, then the lament. Judgement itself is instant now, so this is
+   * pure theatre — which for a court that issues sealed decrees is arguably the
+   * product. Anyone who has asked for reduced motion gets all of it at once.
+   */
+  const revealed = useStagedReveal(5, 460);
 
   return (
     <article className="unfurl">
@@ -53,13 +85,16 @@ export function DeathCertificate({ result, idea }: { result: RejectedResult; ide
           </header>
 
           <dl className="relative mt-12 space-y-6">
-            <Entry label="The venture">{idea}</Entry>
-            <Entry label="Manner of its undoing">{rejection.cause_of_death}</Entry>
-            <Entry label="The hour appointed">{rejection.time_of_death}</Entry>
-            <Entry label="Supplanted by">{rejection.ai_that_replaces_it}</Entry>
+            <Entry label="The venture" shown={revealed >= 1}>{idea}</Entry>
+            <Entry label="Manner of its undoing" shown={revealed >= 2}>{rejection.cause_of_death}</Entry>
+            <Entry label="The hour appointed" shown={revealed >= 3}>{rejection.time_of_death}</Entry>
+            <Entry label="Supplanted by" shown={revealed >= 4}>{rejection.ai_that_replaces_it}</Entry>
           </dl>
 
-          <blockquote className="relative mt-11 border-l-[3px] border-vermilion pl-6">
+          <blockquote
+            className="relative mt-11 border-l-[3px] border-vermilion pl-6 transition-opacity duration-700"
+            style={{ opacity: revealed >= 5 ? 1 : 0 }}
+          >
             <p className="titling text-[0.66rem] text-vermilion">The lament</p>
             <p className="dropcap mt-3 text-2xl leading-snug text-ink sm:text-[1.75rem]">
               {rejection.eulogy}
@@ -93,6 +128,10 @@ export function DeathCertificate({ result, idea }: { result: RejectedResult; ide
         No rubric was applied. No reckoning was made. This court does not assay a trade it
         expects to be swallowed whole as a mere convenience.
       </p>
+
+      {petition && onAppealUpheld && (
+        <AppealForm petition={petition} onUpheld={onAppealUpheld} />
+      )}
     </article>
   );
 }

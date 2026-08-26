@@ -6,6 +6,7 @@ import { scoreRubric } from './model/rubric';
 import { projectTwelveMonths } from './metrics';
 import { hash32 } from './nlp/text';
 import { composeDecree } from './roast/decree';
+import { recordJudgement } from './telemetry';
 import { bandFor, computeSuccessLikelihood } from './scoring';
 import {
   ClassificationSchema,
@@ -42,14 +43,22 @@ export class JudgeError extends Error {
 }
 
 /** Everything the court reads, it reads from one string. */
-function petition(req: JudgeRequest): string {
-  return [req.idea, req.name, req.customer].filter(Boolean).join('. ');
+function petition(req: JudgeRequest, amendment = ''): string {
+  return [req.idea, req.name, req.customer, amendment].filter(Boolean).join('. ');
 }
 
-export function judge(req: JudgeRequest): JudgeResult {
-  const text = petition(req);
+/**
+ * `amendment` is text the court should weigh but that is not part of the
+ * petition as filed — currently only an upheld appeal's rebuttal. It changes
+ * the judgement without rewriting what the petition says.
+ */
+export function judge(req: JudgeRequest, amendment = ''): JudgeResult {
+  const text = petition(req, amendment);
 
   const raw = classify(text);
+  // Probability and branch only. The petition itself is never passed on.
+  recordJudgement(raw.probability, MODEL_THRESHOLD, raw.is_ai_startup);
+
   const checked = ClassificationSchema.safeParse({
     is_ai_startup: raw.is_ai_startup,
     confidence: raw.confidence,

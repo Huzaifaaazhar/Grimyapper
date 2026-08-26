@@ -19,6 +19,15 @@ export type TrainedModel = {
    * mistakes is not symmetric. 0.45 also happened to be the best F1 in the sweep.
    */
   threshold: number;
+  /**
+   * Platt scaling, fitted on out-of-fold scores: calibrated = sigmoid(a*logit + b).
+   *
+   * The raw score decides the branch; this only governs the confidence the court
+   * reports. Before it, "93% certain" was distance from the boundary wearing a
+   * percent sign. `brier` is the Brier score of the calibrated probabilities on
+   * held-out folds — lower is better, and `brierRaw` is what it was without this.
+   */
+  calibration: { a: number; b: number; brier: number; brierRaw: number };
   /** how the model scored on data it never saw during training */
   metrics: {
     folds: number;

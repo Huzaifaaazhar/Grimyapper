@@ -28,13 +28,38 @@ export function tokenise(text: string): string[] {
 }
 
 /** Unigrams plus bigrams. Bigrams are what catch "chat with", "trained on". */
-export function features(text: string): string[] {
+export function wordFeatures(text: string): string[] {
   const words = tokenise(text);
   const out: string[] = [...words];
   for (let i = 0; i < words.length - 1; i += 1) {
     out.push(`${words[i]}_${words[i + 1]}`);
   }
   return out;
+}
+
+/**
+ * Character n-grams over the normalised text, word boundaries marked with `·`.
+ *
+ * Word features are brittle about morphology: "modle" and "model" share no
+ * token at all, and neither do "bakery" and "bakerie". Character grams degrade
+ * gracefully instead — a typo costs a few grams rather than the whole word —
+ * which is what makes a misspelt petition still land in the right place.
+ */
+export function charFeatures(text: string, min = 3, max = 5): string[] {
+  const padded = `·${normalise(text).replace(/ /g, '·')}·`;
+  const out: string[] = [];
+  for (let n = min; n <= max; n += 1) {
+    for (let i = 0; i + n <= padded.length; i += 1) {
+      out.push(`#${padded.slice(i, i + n)}`);
+    }
+  }
+  return out;
+}
+
+/** The full feature string list: words, bigrams, and character grams. */
+export function features(text: string, withChars = true): string[] {
+  const words = wordFeatures(text);
+  return withChars ? [...words, ...charFeatures(text)] : words;
 }
 
 /** Term frequency, as counts. */

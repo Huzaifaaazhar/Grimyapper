@@ -109,9 +109,37 @@ Asked plainly: what would someone actually do to this?
 
 ---
 
+## Check 5, re-run — after the v2 feature set
+
+The skill's rule is to re-run the attacker's-perspective review after any major feature, and v2
+added a lot of surface: two new routes, a public model page, an image renderer, an optional
+outbound call, and — most significantly — **a URL scheme that puts arbitrary attacker-controlled
+text on the site's own domain**.
+
+**Stack delta:** `/api/appeal`, `/j/[token]`, `/j/[token]/opengraph-image`, `/model`, an optional
+Ollama adapter, and a pluggable rate-limit store. Still no database, no auth, no secrets.
+
+| # | What an attacker does | Damage | Status |
+|---|---|---|---|
+| 1 | **Crafts a permalink containing arbitrary text** and shares it. It renders on this domain, under this branding, and unfurls that way in Slack or on a timeline. Nothing was stored and nothing was moderated, but to a reader it looks published. | Reputation, harassment | **Partially mitigated, and the residual is stated.** Contact details, card numbers and postal addresses are refused outright and never reprinted — that is the doxxing route and the one with a real victim. Permalinks carry `noindex, nofollow`, so a crafted link cannot be laundered into a search result. The share image attributes the text as "a petition submitted by a visitor" rather than presenting it as the site's own. **What this does not do is detect abuse in general**, which needs a moderation service. Signing the token would not help: an abuser can put the same text through the form and get a signed link. |
+| 2 | **Floods the share-image renderer**, which is the most expensive thing the app does and the one route with no rate limit. | Availability | **Mitigated.** Rate limiting by IP would break the feature — crawlers unfurl a link from many addresses at once. Caching is the right lever instead: the image is a pure function of the token, so `s-maxage=86400` means a repeat costs nothing and only a flood of *distinct* crafted tokens reaches the renderer. |
+| 3 | **Smuggles an oversized petition through a hand-built token**, bypassing the form's limits. | Availability | **Blocked.** `decodePetition` caps the token at 2 KB and puts the decoded fields through the same zod schema the form uses. Tested. |
+| 4 | **Hammers `/api/appeal`** to burn CPU. | Availability | **Mitigated.** Same rate limiter, same-origin check and body cap as `/api/judge`. |
+| 5 | **Reads the model page** hoping it leaks submissions. | Disclosure | **Nothing to find.** `/model` shows the training corpus (which is in the repo), the model's own errors, and a probability histogram. Petition text is never passed to the telemetry module — not truncated, not hashed — so there is nothing there that could identify a submission even from a memory dump. Asserted in the tests. |
+| 6 | **Points `OLLAMA_URL` at an internal host** to turn the app into an SSRF proxy. | Internal access | **Not reachable.** The URL is an operator-set environment variable, never user input. The adapter also has an 8-second timeout, discards non-200s, and holds the model's output to the same zod contract as everything else — a local model is untrusted output like any other. |
+| 7 | **Takes down the shared rate-limit store** so the limiter fails. | Availability | **Fails open, deliberately.** With a hosted model behind this, failing closed would have been correct. What is being guarded now is CPU, and a dead KV should not take the court down with it. Tested explicitly. |
+| 8 | **Injects markup through the appeal or a permalink.** | XSS | **Blocked.** Same as before: React text nodes throughout, no `dangerouslySetInnerHTML` anywhere in the tree, and the CSP would block inline script regardless. The share image renders through satori, which has no HTML sink at all. |
+
+**One finding was accepted rather than closed**, and it is finding 1. Stateless permalinks are
+what let this ship without a database, and the cost of that choice is that a link carries its own
+petition. The parts that could be fixed reliably were fixed; the part that needs moderation was
+not pretended away.
+
+---
+
 ## Summary
 
-- **Checks run:** 1–5, all of them.
+- **Checks run:** 1–5 at first deploy; check 5 re-run in full after the v2 feature set.
 - **Stack:** Next.js 15 / TypeScript / local classifier, no model service / no DB / no auth /
   no payments / no secrets / Vercel.
 - **Total findings:** 7 actionable (High: 2, Medium: 4, Low: 1). Everything else was verified
@@ -120,9 +148,10 @@ Asked plainly: what would someone actually do to this?
   nonce CSP plus HSTS; the CSP-vs-static-prerender break caught in a browser before deploy;
   input and body caps ahead of any paid call; a same-origin check; a plain-language note telling
   users what happens to what they type.
-- **Needs your decision:** optionally turn on Vercel firewall rate limiting in front of
-  `/api/judge`. It is no longer urgent — with no per-request cost, the worst a flood achieves is
-  a slow page — but it is one console toggle and it closes the last residual.
+- **Needs your decision:** (a) optionally turn on Vercel firewall rate limiting in front of
+  `/api/judge` — no longer urgent with no per-request cost, but one console toggle; (b) decide
+  whether the residual on permalinks (finding 1 of the re-run) is acceptable for your name on the
+  domain. If it is not, the fix is a moderation service, not more code in this repo.
 - **Not applicable:** payments, auth, IDOR, privilege escalation, SQL injection, file uploads,
   password storage, cookie flags, database TLS, data-deletion flows. None of these exist here.
 

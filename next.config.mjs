@@ -2,6 +2,12 @@
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // Satori needs the real font file at render time, and the tracer will not
+  // find it through a runtime readFileSync. Without this the OpenGraph image
+  // falls back to a sans and stops looking like a decree.
+  outputFileTracingIncludes: {
+    '/j/[token]/opengraph-image': ['./assets/fonts/**'],
+  },
   async headers() {
     return [
       {

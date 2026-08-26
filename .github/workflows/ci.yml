@@ -26,17 +26,23 @@ jobs:
       - name: Golden-set eval and drift guard
         run: npm run eval
 
-      # The shipped weights must match what the corpus and features produce.
-      # If someone edits a pattern or adds training data without retraining,
-      # this fails rather than letting the model silently go stale.
-      - name: Weights are in step with the corpus
+      # Everything the training script emits must match what the corpus and
+      # features currently produce. If someone edits a pattern or adds training
+      # data without retraining, this fails rather than letting the shipped
+      # model, its published report, or the percentile curve go quietly stale.
+      - name: Model artefacts are in step with the corpus
         run: |
-          cp lib/model/weights.json /tmp/weights-committed.json
+          mkdir -p /tmp/committed
+          cp lib/model/weights.json lib/model/report.json lib/model/score-distribution.json /tmp/committed/
           npm run train
-          if ! diff -q /tmp/weights-committed.json lib/model/weights.json > /dev/null; then
-            echo "::error::lib/model/weights.json is stale — run \`npm run train\` and commit the result."
-            exit 1
-          fi
-          echo "weights.json matches a fresh training run"
+          stale=0
+          for f in weights.json report.json score-distribution.json; do
+            if ! diff -q "/tmp/committed/$f" "lib/model/$f" > /dev/null; then
+              echo "::error::lib/model/$f is stale — run \`npm run train\` and commit the result."
+              stale=1
+            fi
+          done
+          [ "$stale" -eq 0 ] && echo "all model artefacts match a fresh training run"
+          exit $stale
 
       - run: npm run build

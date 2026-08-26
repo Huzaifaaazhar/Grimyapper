@@ -15,6 +15,9 @@ export const MAX_IDEA_CHARS = 600;
 export const MAX_NAME_CHARS = 80;
 export const MAX_CUSTOMER_CHARS = 140;
 export const MIN_IDEA_CHARS = 12;
+/** One sentence. The court permits a single address, not a submission. */
+export const MAX_REBUTTAL_CHARS = 240;
+export const MIN_REBUTTAL_CHARS = 8;
 
 export const JudgeRequestSchema = z.object({
   idea: z
@@ -26,6 +29,18 @@ export const JudgeRequestSchema = z.object({
   customer: z.string().trim().max(MAX_CUSTOMER_CHARS).default(''),
 });
 export type JudgeRequest = z.infer<typeof JudgeRequestSchema>;
+
+export const AppealRequestSchema = z.object({
+  idea: z.string().trim().min(MIN_IDEA_CHARS).max(MAX_IDEA_CHARS),
+  name: z.string().trim().max(MAX_NAME_CHARS).default(''),
+  customer: z.string().trim().max(MAX_CUSTOMER_CHARS).default(''),
+  rebuttal: z
+    .string()
+    .trim()
+    .min(MIN_REBUTTAL_CHARS, 'Address the court properly.')
+    .max(MAX_REBUTTAL_CHARS, `Keep it under ${MAX_REBUTTAL_CHARS} characters. One address only.`),
+});
+export type AppealRequest = z.infer<typeof AppealRequestSchema>;
 
 /* ---------------------------------------------------------------- classifier */
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { JudgeError, judge } from '@/lib/judge';
+import { embellishDecree, ollamaConfigured } from '@/lib/roast/ollama';
 import { checkRateLimit, clientIp } from '@/lib/ratelimit';
 import { JudgeRequestSchema, MAX_IDEA_CHARS } from '@/lib/schemas';
 
@@ -43,7 +44,7 @@ export async function POST(request: Request) {
     return json({ error: 'That is far too much pitch.' }, 413);
   }
 
-  const rate = checkRateLimit(clientIp(request.headers));
+  const rate = await checkRateLimit(clientIp(request.headers));
   if (!rate.ok) {
     return json(
       {
@@ -82,7 +83,26 @@ export async function POST(request: Request) {
 
   try {
     // Synchronous: the whole court is arithmetic running in this process.
-    return json(judge(parsed.data), 200);
+    const result = judge(parsed.data);
+
+    /*
+     * If a local model is configured, it rewrites the lament — and only the
+     * lament. Everything else stays composed and deterministic.
+     *
+     * Deliberately not applied on the permalink route: a permalink re-derives
+     * its judgement from the petition, and a model would give a different
+     * lament each time, so a shared link would stop matching what its author
+     * saw. Determinism is the whole reason permalinks need no database, and it
+     * is not worth trading for prose.
+     */
+    if (result.outcome === 'rejected' && ollamaConfigured()) {
+      const petitionText = [parsed.data.idea, parsed.data.name, parsed.data.customer]
+        .filter(Boolean)
+        .join('. ');
+      return json({ ...result, rejection: await embellishDecree(result.rejection, petitionText) }, 200);
+    }
+
+    return json(result, 200);
   } catch (err) {
     // Fail closed. No stack, no internals, nothing but a sentence.
     const stage = err instanceof JudgeError ? err.stage : 'unknown';

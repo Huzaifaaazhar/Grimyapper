@@ -1,10 +1,10 @@
 'use client';
 
 import { Fleuron, Lozenges, WaxSeal } from './Ornaments';
-import { ProjectionChart } from './ProjectionChart';
-import { ProjectionTable } from './ProjectionTable';
+import { ProjectionExplorer } from './ProjectionExplorer';
 import { RubricBars } from './RubricBars';
 import { ScoreDial } from './ScoreDial';
+import { SCORE_DISTRIBUTION, percentileFor, standingFor } from '@/lib/model/percentile';
 import type { EvaluatedResult } from '@/lib/schemas';
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -42,7 +42,7 @@ function Section({
 
 export function Dossier({ result, idea }: { result: EvaluatedResult; idea: string }) {
   const a = result.assumptions;
-  const final = result.months[result.months.length - 1];
+  const percentile = percentileFor(result.success_likelihood);
 
   const articles: Array<[string, string, string]> = [
     ['Souls within the year', num.format(Math.round(a.reachable_users_year1)), 'reachable users'],
@@ -76,7 +76,15 @@ export function Dossier({ result, idea }: { result: EvaluatedResult; idea: strin
                   {pct(result.classification.confidence)} certain.
                 </p>
               </div>
-              <ScoreDial score={result.success_likelihood} band={result.band} />
+              <div className="flex flex-col items-center gap-4">
+                <ScoreDial score={result.success_likelihood} band={result.band} />
+                <p className="max-w-[15rem] text-center text-sm italic leading-relaxed text-ink-soft">
+                  This places it in the{' '}
+                  <span className="tabular not-italic text-ink">{percentile}th</span> percentile of
+                  the {SCORE_DISTRIBUTION.n} engine-built ventures upon this court&rsquo;s roll —{' '}
+                  {standingFor(percentile)}.
+                </p>
+              </div>
             </div>
           </header>
 
@@ -109,19 +117,7 @@ export function Dossier({ result, idea }: { result: EvaluatedResult; idea: strin
             title="A reckoning of twelve months"
             aside="Two measures, two plots. Never one plot bearing two scales."
           >
-            <ProjectionChart months={result.months} />
-            <div className="mt-10">
-              <ProjectionTable months={result.months} />
-            </div>
-            <p className="tabular mt-7 border-t rule-faint pt-4 text-[1.05rem] text-ink">
-              By the twelfth month: {num.format(final.users)} souls, {num.format(final.paying)}{' '}
-              paying, {coin.format(final.gross_mrr)} in rents, and the coffers standing at{' '}
-              <span className={final.cumulative_net >= 0 ? 'text-verdigris' : 'text-vermilion'}>
-                {final.cumulative_net >= 0 ? '+' : '−'}
-                {coin.format(Math.abs(final.cumulative_net))}
-              </span>
-              .
-            </p>
+            <ProjectionExplorer base={result.assumptions} />
           </Section>
 
           <footer className="mt-16 double-rule pt-6">

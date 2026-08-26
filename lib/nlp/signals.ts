@@ -34,6 +34,7 @@ export const SIGNAL_NAMES = [
   'workflow_embedded',
   'generative_product',
   'buzzword_veneer',
+  'deterministic_software',
 ] as const;
 
 export type SignalName = (typeof SIGNAL_NAMES)[number];
@@ -45,7 +46,14 @@ const PATTERNS: Record<SignalName, Rule[]> = {
   // The thing being sold IS the model's output.
   core_model_product: [
     { re: /\b(a|an|our|the)\s+(ai\s+)?(model|agent|classifier|network|engine)\s+(that|which|to)\b/ },
-    { re: /\b(model|agent|system|engine|software|tool)\s+(that|which)\s+(reads|writes|drafts|detects|predicts|generates|extracts|summari[sz]es|transcribes|classifies|flags|scores|answers|watches|monitors|grades|triages)\b/ },
+    // Nouns that already imply learning may take the broad verb list.
+    { re: /\b(model|agent|classifier|network|copilot|assistant)\s+(that|which)\s+(reads|writes|drafts|detects|predicts|generates|extracts|summari[sz]es|transcribes|classifies|flags|scores|answers|watches|monitors|grades|triages)\b/ },
+    // "software"/"tool"/"system" are neutral — deterministic software also reads
+    // and extracts — so they only count with a verb that requires judgement.
+    { re: /\b(software|tool|system|engine|platform)\s+(that|which)\s+(predicts|detects|classifies|recogni[sz]es|understands|grades|triages|diagnoses|forecasts|generates|summari[sz]es|transcribes)\b/ },
+    // Vision reads a medium, not a file format.
+    { re: /\b(vision|visual)\s+(software|system|model)\b/ },
+    { re: /\b(from|of)\s+(a\s+)?(photograph|photo|image|video|footage|scan|x-?ray|slide)s?\b/ },
     // The subject is the technique itself: "machine learning that flags…",
     // "AI that watches…". Same product shape, different noun in the slot.
     { re: /\b(machine\s+learning|computer\s+vision|deep\s+learning|an?\s+ai|ml|a\s+model|our\s+model)\s+(that|which)\s+\w+s\b/ },
@@ -188,6 +196,8 @@ const PATTERNS: Record<SignalName, Rule[]> = {
     { re: /\b(avatar|portrait|artwork|image|logo|headshot)s?\b/ },
     { re: /\b(ai)\s+(that|which)\s+(writes|generates|draws|makes|names)\b/ },
     { re: /\b(tarot|horoscope|astrolog\w+|fortune)\b/ },
+    { re: /\bai-?generated\b/ },
+    { re: /\bgenerated\s+(\w+\s+){0,2}(art|covers?|images?|photography|stories|story|poetry|voiceovers?|copy|music)\b/ },
   ],
 
   workflow_embedded: [
@@ -196,6 +206,30 @@ const PATTERNS: Record<SignalName, Rule[]> = {
     { re: /\b(workflow|pipeline|queue|worklist|case\s+management)\b/ },
     { re: /\b(day-?to-?day|every\s+day|daily)\s+\w*\s*(work|job|shift)\b/ },
     { re: /\b(system\s+of\s+record)\b/ },
+  ],
+
+  /*
+   * Software that is configured rather than trained. This is the mirror image of
+   * buzzword_veneer: there the AI words were decoration, here the *verbs* are
+   * decoration. A tool that "extracts tables using their layout coordinates" or
+   * "routes tickets by the rules you configure" reads and extracts and routes,
+   * and learns nothing. Without this the model reads those verbs as inference.
+   */
+  deterministic_software: [
+    { re: /\b(by\s+the\s+)?rules?\s+(you|they)\s+(configure|set|define)\b/ },
+    { re: /\b(threshold|schedule|template|rule)s?\s+you\s+(set|choose|define)\b/ },
+    { re: /\b(layout\s+coordinates|file\s+extensions?|keywords?|regular\s+expressions?)\b/ },
+    // "classifies files by their extension" is a sort, not a judgement. The
+    // giveaway is that the criterion is named, and it is an attribute lookup.
+    { re: /\bby\s+(their|its|the)\s+(extension|name|size|date|type|id|reference|number)\b/ },
+    { re: /\bduplicate\s+(rows?|records?|files?|entries|lines?)\b/ },
+    { re: /\b(reference|invoice|order)\s+numbers?\b/ },
+    { re: /\balerts?\s+you\s+when\b/ },
+    { re: /\b(csv|json|xml|sftp|webhook|api)\b/ },
+    { re: /\b(syncs?|backs?\s+up|uploads?|exports?|imports?)\s+(your|the|it)\b/ },
+    { re: /\b(cron|uptime|single\s+sign-?on|feature\s+flag|dead\s+letter|proration|dunning)\b/ },
+    { re: /\bmatching\s+on\s+keywords\b/ },
+    { re: /\b(predicts\s+nothing|simply\s+reports)\b/ },
   ],
 
   // Computed in extractSignals from the others; it has no patterns of its own.

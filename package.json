@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "eval": "NODE_OPTIONS='--conditions=react-server' tsx evals/run.ts",
-    "train": "tsx scripts/train.ts"
+    "train": "tsx scripts/train.ts",
+    "mine": "NODE_OPTIONS='--conditions=react-server' tsx scripts/mine.ts"
   },
   "dependencies": {
     "next": "^15.5.4",

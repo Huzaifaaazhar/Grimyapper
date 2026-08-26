@@ -14,6 +14,12 @@ if (model.version !== MODEL_VERSION) {
 
 export const MODEL_METRICS = model.metrics;
 export const MODEL_THRESHOLD = model.threshold;
+export const MODEL_CALIBRATION = model.calibration;
+
+/** Platt scaling, fitted out-of-fold in `scripts/train.ts`. */
+function calibrate(logit: number): number {
+  return sigmoid(model.calibration.a * logit + model.calibration.b);
+}
 
 /**
  * How each signal is described when it turns out to be the deciding evidence.
@@ -74,6 +80,10 @@ const REASONS: Record<SignalName, { forAi: string; against: string }> = {
     forAi: 'the engine talk is load-bearing',
     against: 'engine words painted over an ordinary trade',
   },
+  deterministic_software: {
+    forAi: 'it does more than follow rules it was given',
+    against: 'its behaviour is configured rather than learned',
+  },
 };
 
 /** The signals that moved this decision most, largest contribution first. */
@@ -110,25 +120,27 @@ function explain(signals: Signals, isAi: boolean): string {
  * about a millisecond. No network call, no key, no cold start.
  */
 export function classify(text: string): Classification & { probability: number } {
-  const probability = (() => {
-    const vec = vectoriseWith(model, text);
-    let z = model.bias;
-    for (let i = 0; i < vec.length; i += 1) z += vec[i] * model.weights[i];
-    return sigmoid(z);
-  })();
+  const vec = vectoriseWith(model, text);
+  let logit = model.bias;
+  for (let i = 0; i < vec.length; i += 1) logit += vec[i] * model.weights[i];
 
+  const probability = sigmoid(logit);
   const isAi = probability >= model.threshold;
   const signals = extractSignals(text);
 
   /*
-   * Reported confidence is distance from the decision boundary, rescaled to
-   * 0..1 — not the raw probability. A petition scoring 0.46 against a 0.45
-   * threshold is a coin toss, and saying "46% confident it is an engine" would
-   * badly overstate it.
+   * Reported confidence is the *calibrated* probability of the branch actually
+   * taken, not distance from the boundary. Platt scaling was fitted on
+   * out-of-fold scores, so "93% certain" now means the model was right about
+   * 93% of the time when it said that — which the previous number, a rescaled
+   * distance wearing a percent sign, did not.
+   *
+   * Floored at 0.5: inside the narrow band between the 0.45 decision threshold
+   * and an even calibrated split, the branch is taken but the call really is a
+   * coin toss, and the court should say so.
    */
-  const distance = Math.abs(probability - model.threshold);
-  const span = isAi ? 1 - model.threshold : model.threshold;
-  const confidence = Math.min(1, 0.5 + (distance / span) * 0.5);
+  const calibrated = calibrate(logit);
+  const confidence = Math.max(0.5, isAi ? calibrated : 1 - calibrated);
 
   return {
     is_ai_startup: isAi,

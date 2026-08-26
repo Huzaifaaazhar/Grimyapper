@@ -7,23 +7,33 @@ import { Dossier } from '@/components/Dossier';
 import { LoadingCurtain } from '@/components/LoadingCurtain';
 import { Fleuron, Lozenges } from '@/components/Ornaments';
 import { PitchForm } from '@/components/PitchForm';
-import type { JudgeResult } from '@/lib/schemas';
+import { ShareLink } from '@/components/ShareLink';
+import type { JudgeRequest, JudgeResult } from '@/lib/schemas';
 
 type Phase =
   | { kind: 'idle' }
   | { kind: 'judging' }
-  | { kind: 'done'; result: JudgeResult; idea: string }
+  | { kind: 'done'; result: JudgeResult; petition: JudgeRequest; overturned?: string }
   | { kind: 'error'; message: string };
 
-export function Judge() {
-  const [phase, setPhase] = useState<Phase>({ kind: 'idle' });
+export function Judge({
+  initial,
+}: {
+  /** Supplied by a permalink, which has already re-derived the judgement server-side. */
+  initial?: { result: JudgeResult; petition: JudgeRequest };
+}) {
+  const [phase, setPhase] = useState<Phase>(
+    initial ? { kind: 'done', result: initial.result, petition: initial.petition } : { kind: 'idle' },
+  );
   const resultRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (phase.kind === 'done') {
+    // A permalink arrives already decided; scrolling the reader away from the
+    // top of a page they just opened would be rude.
+    if (phase.kind === 'done' && !initial) {
       resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
-  }, [phase.kind]);
+  }, [phase.kind, initial]);
 
   const submit = useCallback(
     async (payload: { idea: string; name: string; customer: string }) => {
@@ -39,7 +49,7 @@ export function Judge() {
           setPhase({ kind: 'error', message: body?.error ?? 'The court is silent.' });
           return;
         }
-        setPhase({ kind: 'done', result: body as JudgeResult, idea: payload.idea });
+        setPhase({ kind: 'done', result: body as JudgeResult, petition: payload });
       } catch {
         setPhase({
           kind: 'error',
@@ -107,11 +117,32 @@ export function Judge() {
 
         {phase.kind === 'done' && (
           <div className="pt-14">
-            {phase.result.outcome === 'rejected' ? (
-              <DeathCertificate result={phase.result} idea={phase.idea} />
-            ) : (
-              <Dossier result={phase.result} idea={phase.idea} />
+            {phase.overturned && (
+              <div className="rise mx-auto mb-10 max-w-xl border-2 border-verdigris bg-[rgba(63,107,82,0.08)] px-6 py-6 text-center">
+                <p className="titling text-[0.62rem] text-verdigris">The appeal is upheld</p>
+                <p className="mt-3 text-[1.15rem] leading-snug text-ink">{phase.overturned}</p>
+              </div>
             )}
+
+            {phase.result.outcome === 'rejected' ? (
+              <DeathCertificate
+                result={phase.result}
+                idea={phase.petition.idea}
+                petition={phase.petition}
+                onAppealUpheld={(judgement, moved) =>
+                  setPhase({
+                    kind: 'done',
+                    result: judgement,
+                    petition: phase.petition,
+                    overturned: moved,
+                  })
+                }
+              />
+            ) : (
+              <Dossier result={phase.result} idea={phase.petition.idea} />
+            )}
+
+            <ShareLink petition={phase.petition} />
 
             <div className="mt-14 flex justify-center">
               <button
@@ -136,7 +167,15 @@ export function Judge() {
           petitions, seven virtues scored by a transparent model, and a deterministic reckoning of
           unit economics. It is not counsel upon money, and it has never once been right.
         </p>
-        <p className="mx-auto mt-3.5 max-w-2xl text-center text-xs leading-relaxed text-ink-faint">
+        <p className="mt-5 text-center">
+          <a
+            href="/model"
+            className="titling text-[0.62rem] text-ink-soft underline decoration-vermilion underline-offset-[6px] hover:text-vermilion"
+          >
+            See what the court gets wrong
+          </a>
+        </p>
+        <p className="mx-auto mt-6 max-w-2xl text-center text-xs leading-relaxed text-ink-faint">
           What becomes of thy petition: nothing. It is judged here, upon this very machine, by a
           model of some seventeen kilobytes that never leaves it. Thy words are sent to no other
           house, stored nowhere, written to no log, and forgotten the instant the answer is drawn.
