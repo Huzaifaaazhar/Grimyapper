@@ -2,7 +2,7 @@
   "name": "grimyapper",
   "version": "1.0.0",
   "private": true,
-  "description": "Grimyapper \u2014 an AI that judges startup ideas. Evaluates AI startups. Buries everything else.",
+  "description": "Grimyapper — an AI that judges startup ideas. Evaluates AI startups. Buries everything else.",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -16,6 +16,8 @@
     "smoke": "tsx scripts/smoke.ts"
   },
   "dependencies": {
+    "framer-motion": "^13.1.1",
+    "jspdf": "^4.2.1",
     "next": "^15.5.4",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",

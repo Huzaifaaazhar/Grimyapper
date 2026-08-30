@@ -1,4 +1,14 @@
-import { JudgeRequestSchema, MAX_CUSTOMER_CHARS, MAX_IDEA_CHARS, MAX_NAME_CHARS, type JudgeRequest } from './schemas';
+import {
+  DECLARATIONS,
+  JudgeRequestSchema,
+  MAX_CAPITAL_CHARS,
+  MAX_CUSTOMER_CHARS,
+  MAX_IDEA_CHARS,
+  MAX_MOAT_CHARS,
+  MAX_NAME_CHARS,
+  type Declaration,
+  type JudgeRequest,
+} from './schemas';
 
 /**
  * Permalinks without a database.
@@ -36,9 +46,30 @@ function fromBase64Url(input: string): string {
   return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
 }
 
-/** The three fields, tab-separated — far shorter than JSON for the same content. */
+/**
+ * The fields, tab-separated — far shorter than JSON for the same content.
+ *
+ * Order is append-only and must stay that way: links already in the wild carry
+ * three fields, so a decoder that reads positionally and defaults what is
+ * missing keeps every one of them working. Reordering would silently reassign
+ * somebody's saved verdict to different columns.
+ */
 export function encodePetition(req: JudgeRequest): string {
-  return toBase64Url([req.idea, req.name ?? '', req.customer ?? ''].join('\t'));
+  return toBase64Url(
+    [
+      req.idea,
+      req.name ?? '',
+      req.customer ?? '',
+      req.moat ?? '',
+      req.capital ?? '',
+      // Written blank, because the decoder already reads a missing column as
+      // 'unstated'. Spelling it out would only lengthen every unstated link.
+      req.declared === 'unstated' ? '' : (req.declared ?? ''),
+    ]
+      // Trailing empties cost URL length and decode to the same defaults anyway.
+      .join('\t')
+      .replace(/\t+$/, ''),
+  );
 }
 
 /**
@@ -63,12 +94,28 @@ export function decodePetition(token: string): JudgeRequest | null {
    */
   if (/[\u0000-\u0008\u000b-\u001f\u007f\ufffd]/.test(raw)) return null;
 
-  const [idea = '', name = '', customer = ''] = raw.split('\t');
-  if (idea.length > MAX_IDEA_CHARS || name.length > MAX_NAME_CHARS || customer.length > MAX_CUSTOMER_CHARS) {
-    return null;
-  }
+  const [idea = '', name = '', customer = '', moat = '', capital = '', declared = ''] =
+    raw.split('\t');
 
-  const parsed = JudgeRequestSchema.safeParse({ idea, name, customer });
+  const overlong =
+    idea.length > MAX_IDEA_CHARS ||
+    name.length > MAX_NAME_CHARS ||
+    customer.length > MAX_CUSTOMER_CHARS ||
+    moat.length > MAX_MOAT_CHARS ||
+    capital.length > MAX_CAPITAL_CHARS;
+  if (overlong) return null;
+
+  const parsed = JudgeRequestSchema.safeParse({
+    idea,
+    name,
+    customer,
+    moat,
+    capital,
+    // An older link has no sixth column, and a crafted one may have nonsense there.
+    declared: (DECLARATIONS as readonly string[]).includes(declared)
+      ? (declared as Declaration)
+      : 'unstated',
+  });
   return parsed.success ? parsed.data : null;
 }
 

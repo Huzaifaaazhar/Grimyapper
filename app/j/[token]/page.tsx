@@ -78,7 +78,7 @@ export default async function JudgementPage({ params }: Props) {
   const guard = guardPermalink(petition);
   const shown: typeof petition = guard.publishable
     ? petition
-    : { ...petition, idea: guard.reason, name: '', customer: '' };
+    : { ...petition, idea: guard.reason, name: '', customer: '', moat: '', capital: '' };
 
   // The judgement is always of the real petition; only the reprinting is withheld.
   return <Judge initial={{ petition: shown, result: judge(petition) }} />;

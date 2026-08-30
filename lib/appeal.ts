@@ -4,7 +4,8 @@ import { classify } from './model/classifier';
 import { extractSignals, type SignalName } from './nlp/signals';
 import { hash32 } from './nlp/text';
 import { judge } from './judge';
-import { AppealRequestSchema, type AppealRequest, type JudgeResult } from './schemas';
+import { AppealRequestSchema, type JudgeResult } from './schemas';
+import type { z } from 'zod';
 
 /**
  * The appeal.
@@ -53,9 +54,14 @@ const UPHELD = [
 
 const pick = (pool: string[], seed: number) => pool[hash32(String(seed)) % pool.length];
 
-export function hearAppeal(input: AppealRequest): AppealResult {
+/**
+ * Takes the schema's *input* type, not its output: this function parses what it
+ * is given, so demanding pre-filled defaults from every caller would be asking
+ * them to do the job it does on its first line.
+ */
+export function hearAppeal(input: z.input<typeof AppealRequestSchema>): AppealResult {
   const req = AppealRequestSchema.parse(input);
-  const original = [req.idea, req.name, req.customer].filter(Boolean).join('. ');
+  const original = [req.idea, req.name, req.customer, req.moat].filter(Boolean).join('. ');
   const amended = `${original}. ${req.rebuttal}`;
 
   const before = classify(original);
@@ -66,7 +72,17 @@ export function hearAppeal(input: AppealRequest): AppealResult {
     // The rebuttal genuinely moved the classifier. Judge the amended petition.
     return {
       outcome: 'upheld',
-      judgement: judge({ idea: req.idea, name: req.name, customer: req.customer }, req.rebuttal),
+      judgement: judge(
+        {
+          idea: req.idea,
+          name: req.name,
+          customer: req.customer,
+          moat: req.moat,
+          capital: req.capital,
+          declared: req.declared,
+        },
+        req.rebuttal,
+      ),
       moved: pick(UPHELD, seed),
     };
   }

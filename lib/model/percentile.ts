@@ -37,3 +37,26 @@ export function standingFor(percentile: number): string {
   if (percentile >= 20) return 'below most that come before it';
   return 'among the weakest this court has weighed';
 }
+
+/**
+ * English ordinals, done properly.
+ *
+ * Appending a bare "th" printed "92th" and "21th" on the charter and the
+ * dossier alike. The teens are the exception that a naive last-digit rule gets
+ * wrong, so they are checked first.
+ */
+export function ordinal(n: number): string {
+  const abs = Math.abs(Math.trunc(n));
+  const teen = abs % 100;
+  if (teen >= 11 && teen <= 13) return `${n}th`;
+  switch (abs % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}

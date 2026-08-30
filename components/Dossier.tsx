@@ -4,7 +4,7 @@ import { Fleuron, Lozenges, WaxSeal } from './Ornaments';
 import { ProjectionExplorer } from './ProjectionExplorer';
 import { RubricBars } from './RubricBars';
 import { ScoreDial } from './ScoreDial';
-import { SCORE_DISTRIBUTION, percentileFor, standingFor } from '@/lib/model/percentile';
+import { SCORE_DISTRIBUTION, ordinal, percentileFor, standingFor } from '@/lib/model/percentile';
 import type { EvaluatedResult } from '@/lib/schemas';
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`;
@@ -80,7 +80,7 @@ export function Dossier({ result, idea }: { result: EvaluatedResult; idea: strin
                 <ScoreDial score={result.success_likelihood} band={result.band} />
                 <p className="max-w-[15rem] text-center text-sm italic leading-relaxed text-ink-soft">
                   This places it in the{' '}
-                  <span className="tabular not-italic text-ink">{percentile}th</span> percentile of
+                  <span className="tabular not-italic text-ink">{ordinal(percentile)}</span> percentile of
                   the {SCORE_DISTRIBUTION.n} engine-built ventures upon this court&rsquo;s roll —{' '}
                   {standingFor(percentile)}.
                 </p>

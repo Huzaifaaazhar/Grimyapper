@@ -40,7 +40,11 @@ export type GuardVerdict =
   | { publishable: false; reason: string };
 
 export function guardPermalink(petition: JudgeRequest): GuardVerdict {
-  const text = [petition.idea, petition.name, petition.customer].filter(Boolean).join(' ');
+  // Every field the page reprints, including the ones added later. A guard
+  // that only checks three of six fields is a guard with a hole in it.
+  const text = [petition.idea, petition.name, petition.customer, petition.moat, petition.capital]
+    .filter(Boolean)
+    .join(' ');
 
   for (const { label, re } of PERSONAL_DATA) {
     if (re.test(text)) {

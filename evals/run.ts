@@ -43,7 +43,14 @@ const OFF = '\x1b[0m';
 const failures: string[] = [];
 const fail = (gate: string, detail: string) => failures.push(`${gate}: ${detail}`);
 
-const req = (c: EvalCase) => ({ idea: c.idea, name: c.name ?? '', customer: c.customer ?? '' });
+const req = (c: EvalCase) => ({
+  idea: c.idea,
+  name: c.name ?? '',
+  customer: c.customer ?? '',
+  moat: '',
+  capital: '',
+  declared: 'unstated' as const,
+});
 
 /* ------------------------------------------------------- 1 & 2: routing + rubric */
 

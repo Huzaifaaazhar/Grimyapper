@@ -96,7 +96,7 @@ export async function POST(request: Request) {
      * is not worth trading for prose.
      */
     if (result.outcome === 'rejected' && ollamaConfigured()) {
-      const petitionText = [parsed.data.idea, parsed.data.name, parsed.data.customer]
+      const petitionText = [parsed.data.idea, parsed.data.name, parsed.data.customer, parsed.data.moat]
         .filter(Boolean)
         .join('. ');
       return json({ ...result, rejection: await embellishDecree(result.rejection, petitionText) }, 200);

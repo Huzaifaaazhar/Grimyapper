@@ -44,8 +44,49 @@ like one.
   their ordinary term underneath; and the rubric notes themselves stay in plain, precise English,
   because an investor has to be able to read them and learn something true. The costume is worn
   by the headings and the verdict, never by the analysis.
-- **Parchment only.** There is no dark mode for the fifteenth century — a deliberate commitment
-  to one look rather than an omission.
+- **Parchment only, except in the hall.** There is no dark mode for the fifteenth century — a
+  deliberate commitment to one look rather than an omission. The two full-screen sequences are
+  the exception: a sentence is delivered in a candlelit chamber, so they play on near-black.
+
+### The court in session
+
+The verdict arrives as a sequence, not a state change.
+
+- **The deliberation.** A full-screen curtain: a drawn candle whose flame never repeats on a
+  countable beat, a balance that never settles, three named stages, and a quill ruling a line
+  across the foot of the page. It is theatre and is labelled as such in the source — the
+  judgement underneath takes about a third of a millisecond, so the curtain is *held* open
+  rather than measuring anything. No percentage is shown, because there is nothing to measure.
+- **The gauntlet.** A drawn royal gauntlet delivers the sentence: turned down over a crimson
+  flash and a single screen-shake for an execution, raised through a golden aura and a slow
+  rotating burst for a blessing, with a wax seal pressed down at the end. One drawing serves
+  both — a thumbs-down is the same hand turned over, so the group rotates 180°, which is the
+  cheaper implementation and the anatomically correct one.
+- **Embers and glints.** A canvas layer, about forty lines, rather than a particle library:
+  embers rise for a condemnation, gold leaf falls for a blessing. It sizes to `devicePixelRatio`,
+  stops on `visibilitychange`, and draws one still frame and schedules nothing further under
+  reduced motion.
+- **Skippable, always.** Click, Escape, Enter or space dismisses the overture at any point, and
+  anyone on their fourth petition is not made to sit through a fourth ceremony.
+- **`prefers-reduced-motion` collapses all of it.** The curtain is not held, the flash and the
+  shake are not drawn, and the answer arrives in about 200 ms instead of 3.6 s. The gauntlet and
+  the words are the content; the shaking is decoration, and only the decoration is dropped.
+
+### The Charter of Sovereign Blessing
+
+An approved venture gets a certificate, on screen and as a downloadable PDF.
+
+Both are rendered from one pure function, `buildCharter` — the screen, the PDF and the tests all
+read the same object, so the downloaded leaf cannot drift from the page that offered it.
+
+The PDF is **drawn in vector primitives, not screenshotted**. `html2canvas` would produce a soft,
+unselectable ~2 MB raster and would have to parse the page's real CSS, which for Tailwind v4
+means colour syntax it does not understand. Drawing it instead gives a ~90 KB file that is crisp
+at any zoom and whose text can be copied. It uses jsPDF's built-in Times rather than embedding
+Cinzel and Garamond, because two base64'd TTFs in the client bundle is a poor trade for a button
+most visitors never press — the period is carried by the drawn ornament, which is where it should
+come from. jsPDF itself is dynamically imported on click, so its ~350 KB never touches the
+initial load.
 
 ---
 
@@ -241,6 +282,26 @@ and `lib/metrics.ts`:
 A thin wrapper is still an AI startup — it gets evaluated, and then the moat and wrapper-risk
 axes do the judging.
 
+### The petition, and the declaration
+
+The form asks in two parts: **the core artifice** (the venture's name, whether it is wrought with
+thinking engines, and the petition itself) and **market & guild metrics** (target guilds, treasury
+reserves, and the secret alchemy that keeps thieves out).
+
+The declaration is a claim and nothing more, and this is load-bearing:
+
+- The classifier **never sees it.** `petition()` in `lib/judge.ts` builds the text it assays from
+  the prose fields only. If a radio button decided the branch there would be no assayer.
+- It is three-valued, not a switch. "I shall not say" is the default and is a different thing
+  from "no".
+- What it is *for* is the discrepancy. A venture that swore it was wrought with thinking engines
+  and was found not to be gets told so, in those terms — which is a more interesting outcome than
+  either half alone.
+
+`moat` is prose about what the venture actually does, so it is assayed with the rest. `capital` is
+recorded and printed but deliberately never weighed: money says nothing about whether something
+thinks, and feeding it in would only hand the classifier a number to overfit.
+
 ## What else it does
 
 ### Permalinks, with no database
@@ -372,10 +433,14 @@ not a substitute for professional security testing.
 
 ## Stack
 
-Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Recharts · zod · Vitest · deployed on
-Vercel. **No ML runtime, no model download, no inference service** — the classifier is 17 KB of
-JSON and about eighty lines of arithmetic. No database, no auth, no API key, no state beyond
-React.
+Next.js 15 (App Router) · TypeScript · Tailwind CSS v4 · Framer Motion · Recharts · jsPDF ·
+zod · Vitest · deployed on Vercel. **No ML runtime, no model download, no inference service** —
+the classifier is 17 KB of JSON and about eighty lines of arithmetic. No database, no auth, no
+API key, no state beyond React.
+
+Every piece of art in the app — the wax, the gauntlet, the candle, the balance, the charter's
+border and seal — is drawn as vector in the source. There is not one raster asset, so nothing
+needs a second file at 2×, and each one recolours itself for the verdict it is delivering.
 
 Both projection charts are drawn in the same ink on purpose. Each panel holds one series and is
 named by its own heading, so colour has nothing left to encode — and two measures on different

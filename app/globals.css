@@ -30,6 +30,15 @@
   --color-verdigris: #3f6b52;
   --color-lapis: #2b4570;
 
+  /* burnished gold, for the charter and the royal favour */
+  --color-gilt: #d4af37;
+  --color-gilt-deep: #8a6412;
+  --color-gilt-lit: #f3d886;
+
+  /* the court at night: the ground the verdict sequences play against */
+  --color-hall: #14100a;
+  --color-hall-lit: #241a0e;
+
   /* sealing wax */
   --color-wax: #8e1f1a;
   --color-wax-lit: #c4423a;
@@ -230,6 +239,64 @@
   .fade {
     animation: fade 0.7s ease both;
   }
+
+  /*
+   * The hall the verdict is delivered in: near-black, lit from one point, as a
+   * candlelit chamber is. Everything in the overture sits on this.
+   */
+  .hall {
+    background-color: var(--color-hall);
+    background-image:
+      radial-gradient(ellipse at 50% 44%, rgba(212, 175, 55, 0.16), transparent 62%),
+      radial-gradient(ellipse at 50% 100%, rgba(94, 18, 15, 0.24), transparent 60%);
+  }
+
+  /* Gilded strokes and letters, with the direction of the light kept constant. */
+  .gilt {
+    color: var(--color-gilt);
+    text-shadow:
+      0 1px 0 rgba(58, 40, 8, 0.9),
+      0 -1px 0 rgba(243, 216, 134, 0.35);
+  }
+
+  .gilt-rule {
+    border-color: rgba(212, 175, 55, 0.42);
+  }
+
+  /*
+   * Scrollwork: a gilt double frame with the corners cut, which is how an
+   * engraved charter border actually resolves at a corner.
+   */
+  .scrollwork {
+    position: relative;
+    border: 2px solid rgba(138, 100, 18, 0.6);
+    box-shadow:
+      inset 0 0 0 3px rgba(233, 223, 198, 0.5),
+      inset 0 0 0 5px rgba(212, 175, 55, 0.55),
+      inset 0 0 34px rgba(138, 100, 18, 0.14);
+  }
+
+  /* A custom scrollbar, so even the chrome is in period. */
+  .quire {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(138, 100, 18, 0.6) transparent;
+  }
+
+  .quire::-webkit-scrollbar {
+    width: 11px;
+    height: 11px;
+  }
+
+  .quire::-webkit-scrollbar-track {
+    background: rgba(138, 118, 88, 0.14);
+  }
+
+  .quire::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, var(--color-gilt-lit), var(--color-gilt-deep));
+    border: 2px solid transparent;
+    background-clip: padding-box;
+    border-radius: 99px;
+  }
 }
 
 @keyframes rise {
@@ -281,11 +348,55 @@
   }
 }
 
+/* The flame never sits still, and never repeats on a countable beat. */
+@keyframes flicker {
+  0% { transform: scale(1) translateX(0); opacity: 0.95; }
+  18% { transform: scale(1.06, 0.94) translateX(-0.7px); opacity: 1; }
+  37% { transform: scale(0.95, 1.08) translateX(0.5px); opacity: 0.88; }
+  58% { transform: scale(1.04, 0.97) translateX(0.8px); opacity: 1; }
+  79% { transform: scale(0.97, 1.05) translateX(-0.4px); opacity: 0.92; }
+  100% { transform: scale(1) translateX(0); opacity: 0.95; }
+}
+
+/* The beam of a balance settling, never quite level. */
+@keyframes weigh {
+  0%, 100% { transform: rotate(-5.5deg); }
+  50% { transform: rotate(5.5deg); }
+}
+
+/* The chamber struck by the sentence. Short, and it does not repeat. */
+@keyframes shake {
+  0%, 100% { transform: translate3d(0, 0, 0); }
+  12% { transform: translate3d(-9px, 3px, 0); }
+  25% { transform: translate3d(8px, -4px, 0); }
+  38% { transform: translate3d(-6px, -3px, 0); }
+  52% { transform: translate3d(5px, 4px, 0); }
+  67% { transform: translate3d(-3px, -2px, 0); }
+  84% { transform: translate3d(2px, 1px, 0); }
+}
+
+.candle-flame {
+  transform-origin: 50% 100%;
+  animation: flicker 1.9s ease-in-out infinite;
+}
+
+.balance-beam {
+  transform-origin: 50% 50%;
+  animation: weigh 3.6s ease-in-out infinite;
+}
+
+.struck {
+  animation: shake 0.62s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rise,
   .unfurl,
   .press,
-  .fade {
+  .fade,
+  .candle-flame,
+  .balance-beam,
+  .struck {
     animation: none;
   }
 }

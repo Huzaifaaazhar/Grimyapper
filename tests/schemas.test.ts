@@ -12,6 +12,24 @@ describe('JudgeRequestSchema', () => {
     const parsed = JudgeRequestSchema.parse({ idea: 'An agent that files my expenses for me.' });
     expect(parsed.name).toBe('');
     expect(parsed.customer).toBe('');
+    expect(parsed.moat).toBe('');
+    expect(parsed.capital).toBe('');
+    // Silence is its own answer, and is not the same as "no engines".
+    expect(parsed.declared).toBe('unstated');
+  });
+
+  it('refuses a declaration that is not one of the three', () => {
+    const result = JudgeRequestSchema.safeParse({
+      idea: 'An agent that files my expenses for me.',
+      declared: 'definitely-ai-trust-me',
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('caps the moat and the treasury line', () => {
+    const idea = 'A model that predicts grocery shrink per SKU.';
+    expect(JudgeRequestSchema.safeParse({ idea, moat: 'x'.repeat(1000) }).success).toBe(false);
+    expect(JudgeRequestSchema.safeParse({ idea, capital: 'x'.repeat(500) }).success).toBe(false);
   });
 
   it('rejects a pitch that is too short', () => {

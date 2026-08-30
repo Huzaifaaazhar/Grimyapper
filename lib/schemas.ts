@@ -10,14 +10,33 @@ import { z } from 'zod';
  *              clamping. Anything that fails this never reaches the render tree.
  */
 
-/** Hard input caps. This is free text from strangers that costs money per request. */
+/** Hard input caps. This is free text from strangers, parsed on every request. */
 export const MAX_IDEA_CHARS = 600;
 export const MAX_NAME_CHARS = 80;
 export const MAX_CUSTOMER_CHARS = 140;
+export const MAX_MOAT_CHARS = 300;
+export const MAX_CAPITAL_CHARS = 60;
 export const MIN_IDEA_CHARS = 12;
 /** One sentence. The court permits a single address, not a submission. */
 export const MAX_REBUTTAL_CHARS = 240;
 export const MIN_REBUTTAL_CHARS = 8;
+
+/**
+ * What the petitioner *claims* about their own venture.
+ *
+ * It is a claim and nothing more. The classifier never sees it — see
+ * `petition()` in `lib/judge.ts`, which builds the text it assays from the
+ * prose fields only. The declaration exists so the court can hold the claim up
+ * against its own finding, which is the more interesting outcome by far: a
+ * venture that swore it was wrought with thinking engines and was found not to
+ * be is a different kind of failure than one that never claimed anything.
+ *
+ * If self-declaration decided the branch there would be no assayer, only a
+ * radio button.
+ */
+export const DECLARATIONS = ['ai', 'none', 'unstated'] as const;
+export const DeclarationSchema = z.enum(DECLARATIONS).default('unstated');
+export type Declaration = (typeof DECLARATIONS)[number];
 
 export const JudgeRequestSchema = z.object({
   idea: z
@@ -27,6 +46,11 @@ export const JudgeRequestSchema = z.object({
     .max(MAX_IDEA_CHARS, `Keep it under ${MAX_IDEA_CHARS} characters.`),
   name: z.string().trim().max(MAX_NAME_CHARS).default(''),
   customer: z.string().trim().max(MAX_CUSTOMER_CHARS).default(''),
+  /** The secret alchemy. Prose, and genuinely signal-bearing, so it is assayed. */
+  moat: z.string().trim().max(MAX_MOAT_CHARS).default(''),
+  /** Treasury reserves. Recorded and printed; deliberately not assayed. */
+  capital: z.string().trim().max(MAX_CAPITAL_CHARS).default(''),
+  declared: DeclarationSchema,
 });
 export type JudgeRequest = z.infer<typeof JudgeRequestSchema>;
 
@@ -34,6 +58,9 @@ export const AppealRequestSchema = z.object({
   idea: z.string().trim().min(MIN_IDEA_CHARS).max(MAX_IDEA_CHARS),
   name: z.string().trim().max(MAX_NAME_CHARS).default(''),
   customer: z.string().trim().max(MAX_CUSTOMER_CHARS).default(''),
+  moat: z.string().trim().max(MAX_MOAT_CHARS).default(''),
+  capital: z.string().trim().max(MAX_CAPITAL_CHARS).default(''),
+  declared: DeclarationSchema,
   rebuttal: z
     .string()
     .trim()

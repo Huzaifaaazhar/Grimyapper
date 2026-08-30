@@ -42,9 +42,18 @@ export class JudgeError extends Error {
   }
 }
 
-/** Everything the court reads, it reads from one string. */
+/**
+ * Everything the court reads, it reads from one string.
+ *
+ * Note what is not in it. `capital` is a quantity of money, and money says
+ * nothing about whether a venture is built on thinking engines — feeding it in
+ * would only give the classifier a number to overfit. `declared` is the
+ * petitioner's own claim, and a claim that decided its own verdict would make
+ * the assayer ornamental. `moat` is prose about what the venture actually does,
+ * so it is assayed like the rest.
+ */
 function petition(req: JudgeRequest, amendment = ''): string {
-  return [req.idea, req.name, req.customer, amendment].filter(Boolean).join('. ');
+  return [req.idea, req.name, req.customer, req.moat, amendment].filter(Boolean).join('. ');
 }
 
 /**

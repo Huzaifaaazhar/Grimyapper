@@ -8,10 +8,58 @@ const petition = (over: Partial<JudgeRequest> = {}): JudgeRequest => ({
   idea: 'A marketplace connecting dog owners with vetted local dog walkers.',
   name: '',
   customer: '',
+  moat: '',
+  capital: '',
+  declared: 'unstated',
   ...over,
 });
 
 describe('permalink encoding', () => {
+  it('round-trips the fields added after launch', () => {
+    const p = petition({
+      name: 'The Synergx Engine',
+      customer: 'Merchant captains',
+      moat: 'Five years of labelled carrier disputes.',
+      capital: 'Twelve moons of gold',
+      declared: 'ai',
+    });
+    expect(decodePetition(encodePetition(p))).toEqual(p);
+  });
+
+  it('still decodes a three-field link minted before those fields existed', () => {
+    /*
+     * Links are in the wild. This is the exact byte layout the first version
+     * produced, written out literally rather than via encodePetition, so the
+     * test keeps failing if the column order is ever changed.
+     */
+    const legacy = Buffer.from(
+      ['A bakery selling sourdough and pastries.', 'Crumb', 'Neighbours'].join('\t'),
+      'utf8',
+    ).toString('base64url');
+
+    expect(decodePetition(legacy)).toEqual(
+      petition({
+        idea: 'A bakery selling sourdough and pastries.',
+        name: 'Crumb',
+        customer: 'Neighbours',
+      }),
+    );
+  });
+
+  it('defaults a nonsense declaration rather than refusing the link', () => {
+    const crafted = Buffer.from(
+      ['An agent that drafts freight claims.', '', '', '', '', 'sovereign'].join('\t'),
+      'utf8',
+    ).toString('base64url');
+    expect(decodePetition(crafted)?.declared).toBe('unstated');
+  });
+
+  it('does not pad a short petition with empty columns', () => {
+    // Trailing tabs would lengthen every URL for nothing.
+    const bare = petition();
+    expect(Buffer.from(encodePetition(bare), 'base64url').toString('utf8')).toBe(bare.idea);
+  });
+
   it('round-trips every field', () => {
     const p = petition({ name: 'Waggle', customer: 'Urban dog owners' });
     expect(decodePetition(encodePetition(p))).toEqual(p);
