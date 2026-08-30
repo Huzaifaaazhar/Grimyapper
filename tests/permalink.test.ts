@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { decodePetition, encodePetition, permalinkPath } from '@/lib/permalink';
+import { canPermalink, decodePetition, encodePetition, permalinkPath } from '@/lib/permalink';
 import { guardPermalink } from '@/lib/permalink-guard';
 import { MAX_IDEA_CHARS, type JudgeRequest } from '@/lib/schemas';
 
@@ -12,6 +12,41 @@ const petition = (over: Partial<JudgeRequest> = {}): JudgeRequest => ({
   capital: '',
   declared: 'unstated',
   ...over,
+});
+
+describe('what fits in a link', () => {
+  const maxed = (fill: string) =>
+    petition({
+      idea: fill.repeat(600),
+      name: fill.repeat(80),
+      customer: fill.repeat(140),
+      moat: fill.repeat(300),
+      capital: fill.repeat(60),
+      declared: 'ai' as const,
+    });
+
+  it('carries every field at its cap in Latin script', () => {
+    expect(canPermalink(maxed('a'))).toBe(true);
+  });
+
+  it('carries an ordinary petition in a multi-byte script', () => {
+    // The bug this guards: the old 2048-char bound rejected these on arrival
+    // while the UI happily printed the link.
+    expect(canPermalink(petition({ idea: '貓'.repeat(600), name: '貓'.repeat(80) }))).toBe(true);
+  });
+
+  it('admits it when a petition genuinely will not fit', () => {
+    // Every field maxed in a three-byte script exceeds any sane URL. The point
+    // is that this is reported, not that it is impossible.
+    expect(canPermalink(maxed('貓'))).toBe(false);
+  });
+
+  it('never claims a link works when decoding it would fail', () => {
+    for (const fill of ['a', 'é', '貓', '𝔊']) {
+      const p = maxed(fill);
+      expect(canPermalink(p)).toBe(decodePetition(encodePetition(p)) !== null);
+    }
+  });
 });
 
 describe('permalink encoding', () => {

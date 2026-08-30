@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 
-import { permalinkPath } from '@/lib/permalink';
+import { canPermalink, permalinkPath } from '@/lib/permalink';
 import type { JudgeRequest } from '@/lib/schemas';
 
 /**
@@ -13,11 +13,14 @@ import type { JudgeRequest } from '@/lib/schemas';
 export function ShareLink({ petition }: { petition: JudgeRequest }) {
   const [href, setHref] = useState('');
   const [copied, setCopied] = useState(false);
+  // Computed here rather than in the effect so the "too long" branch renders on
+  // the first paint instead of flashing an input that is about to disappear.
+  const carriable = canPermalink(petition);
 
   useEffect(() => {
-    setHref(`${window.location.origin}${permalinkPath(petition)}`);
+    setHref(carriable ? `${window.location.origin}${permalinkPath(petition)}` : '');
     setCopied(false);
-  }, [petition]);
+  }, [petition, carriable]);
 
   async function copy() {
     try {
@@ -27,6 +30,19 @@ export function ShareLink({ petition }: { petition: JudgeRequest }) {
     } catch {
       // Clipboard refused; the input below is selectable, which is the fallback.
     }
+  }
+
+  if (!carriable) {
+    return (
+      <div className="mx-auto mt-12 max-w-xl border-t rule-faint pt-7 text-center">
+        <p className="titling text-[0.62rem] text-ink-faint">Carry this judgement elsewhere</p>
+        <p className="mx-auto mt-3 max-w-md text-sm italic leading-relaxed text-ink-soft">
+          This petition is too long to travel in a link. The court stores nothing, so a permalink
+          must carry the whole petition in the address itself, and this one will not fit. Shorten
+          it, or keep the judgement where it stands.
+        </p>
+      </div>
+    );
   }
 
   return (

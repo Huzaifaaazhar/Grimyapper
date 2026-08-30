@@ -77,8 +77,25 @@ export function encodePetition(req: JudgeRequest): string {
  * It goes through the same schema every submitted petition does, so a crafted
  * link cannot smuggle in a longer petition than the form allows.
  */
+/**
+ * The longest token the court will read.
+ *
+ * The bound is on the *encoded* token because that is what arrives in the URL.
+ * It has to clear what the form can actually produce: the field caps sum to
+ * about 1,180 characters, which is ~1,580 base64 in Latin script but three or
+ * four times that in a script whose characters cost several bytes each. At the
+ * old 2,048 a petition written in Chinese produced a link that looked fine,
+ * copied fine, and 404'd on arrival.
+ *
+ * 4,096 covers ordinary content in any script and stays a URL that survives
+ * being pasted into a chat window. It cannot cover *every* field maxed out in a
+ * multi-byte script — nothing short of a database can — which is why
+ * `canPermalink` exists rather than the UI assuming a link always works.
+ */
+const MAX_TOKEN_CHARS = 4096;
+
 export function decodePetition(token: string): JudgeRequest | null {
-  if (!token || token.length > 2048) return null;
+  if (!token || token.length > MAX_TOKEN_CHARS) return null;
 
   let raw: string;
   try {
@@ -121,4 +138,16 @@ export function decodePetition(token: string): JudgeRequest | null {
 
 export function permalinkPath(req: JudgeRequest): string {
   return `/j/${encodePetition(req)}`;
+}
+
+/**
+ * Whether this petition survives the round trip.
+ *
+ * Encoding always succeeds; decoding is what can fail, and it fails on length
+ * for petitions whose UTF-8 is far larger than their character count. Offering
+ * a link that 404s when opened is worse than saying plainly that this one is
+ * too long to carry, so the UI asks first.
+ */
+export function canPermalink(req: JudgeRequest): boolean {
+  return decodePetition(encodePetition(req)) !== null;
 }
