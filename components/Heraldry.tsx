@@ -55,9 +55,9 @@ export function Gauntlet({
 
   return (
     <svg
-      viewBox="0 0 200 252"
+      viewBox="0 0 230 226"
       width={size}
-      height={(size / 200) * 252}
+      height={(size / 230) * 226}
       className={className}
       role="img"
       aria-label={
@@ -84,100 +84,112 @@ export function Gauntlet({
         </radialGradient>
       </defs>
 
-      <ellipse cx="100" cy="122" rx="98" ry="122" fill={`url(#${glow})`} />
+      <ellipse cx="115" cy="113" rx="115" ry="113" fill={`url(#${glow})`} />
 
       {/*
        * Turned over for a sentence of death; upright for royal favour.
        *
-       * The silhouette is doing all the work here, so it is built the way the
-       * gesture actually reads: a thumb nearly as tall as the fist and set
-       * outboard of it, a wrist narrower than both, and the finger divisions
-       * confined to the right-hand side. Full-width bands on an even-width
-       * body — the first attempt — made a barrel, not a hand.
+       * Proportion is the whole problem here, and two earlier attempts got it
+       * wrong in the same direction: a thumb drawn TALLER than the fist, rising
+       * from a narrow pedestal cuff, does not read as a hand at all — it reads
+       * as a shaft on a base, which is exactly what it looked like.
+       *
+       * What actually makes the gesture legible:
+       *   - the fist dominates; the thumb is roughly half its height and stubby,
+       *   - the four fingers are drawn SEPARATELY so the far edge is scalloped,
+       *     which is the single strongest "this is a hand" cue in the silhouette,
+       *   - the thumb tilts rather than standing perfectly vertical, and carries
+       *     a nail at the tip,
+       *   - the bracer is WIDER than the fist, so the wrist reads as a forearm
+       *     rather than a stem holding something up.
        */}
-      <g transform={verdict === 'down' ? 'rotate(180 100 126)' : undefined}>
-        {/* the thumb, drawn first so the fist laps over its root */}
+      <g transform={verdict === 'down' ? 'rotate(180 115 113)' : undefined}>
+        {/* the heel of the palm, behind everything */}
         <path
-          d="M48 130 C41 98 45 52 60 32 C71 17 92 19 97 38 C102 57 99 100 99 130 Z"
+          d="M112 92 L86 92 C64 92 50 105 50 125 L50 156 C50 176 64 188 86 188 L112 188 Z"
           fill={`url(#${plate})`}
           stroke={edge}
           strokeWidth="2.6"
           strokeLinejoin="round"
         />
-        {/* the joints it articulates on */}
-        <path d="M46 98 C60 92 84 92 98 98" fill="none" stroke={lame} strokeWidth="2.4" />
-        <path d="M49 64 C62 58 84 59 97 65" fill="none" stroke={lame} strokeWidth="2" />
+
+        {/*
+         * The four curled fingers, each its own plate. Their differing reach is
+         * what scallops the knuckle edge — index furthest, little finger least.
+         */}
+        {[
+          { y: 84, w: 104 },
+          { y: 110, w: 110 },
+          { y: 136, w: 103 },
+          { y: 162, w: 92 },
+        ].map(({ y, w }) => (
+          <rect
+            key={y}
+            x="96"
+            y={y}
+            width={w}
+            height="26"
+            rx="13"
+            fill={`url(#${plate})`}
+            stroke={edge}
+            strokeWidth="2.4"
+          />
+        ))}
+
+        {/* light along the index plate, so the steel reads as convex */}
         <path
-          d="M58 38 C68 31 84 32 93 39"
+          d="M112 92 C142 87 172 89 192 96"
           fill="none"
           stroke={shine}
-          strokeWidth="2.4"
+          strokeWidth="3"
           strokeLinecap="round"
           opacity="0.55"
         />
 
         {/*
-         * The fist. Wider than it is tall and bulging along the knuckle side,
-         * which is what separates a fist from the rounded box the first two
-         * attempts produced.
+         * The thumb: about half the fist's height, thick, and tilted. Drawn last
+         * so it laps over the palm, with the web crease cut beneath it.
          */}
-        <path
-          d="M44 140 C44 118 58 108 80 108 L142 108 C166 108 180 122 180 144
-             C180 162 177 176 173 189 C167 202 156 211 140 211
-             L74 211 C56 211 44 199 44 179 Z"
-          fill={`url(#${plate})`}
-          stroke={edge}
-          strokeWidth="2.6"
-          strokeLinejoin="round"
-        />
+        <g transform="rotate(-9 70 100)">
+          <path
+            d="M50 104 C43 82 47 52 62 42 C75 33 93 39 94 57 C95 73 89 88 89 104 Z"
+            fill={`url(#${plate})`}
+            stroke={edge}
+            strokeWidth="2.6"
+            strokeLinejoin="round"
+          />
+          {/* the knuckle it bends on */}
+          <path d="M49 78 C62 72 79 73 90 78" fill="none" stroke={lame} strokeWidth="2.4" />
+          {/* the nail: the cue that settles it as a thumb and not a digit */}
+          <path
+            d="M58 56 C64 48 80 48 86 57 C80 66 64 66 58 56 Z"
+            fill="none"
+            stroke={lame}
+            strokeWidth="2.2"
+            strokeLinejoin="round"
+          />
+        </g>
 
-        {/* the crease where the thumb leaves the heel of the palm */}
+        {/* the web between thumb and index */}
         <path
-          d="M52 148 C72 139 89 147 97 168"
-          fill="none"
-          stroke={lame}
-          strokeWidth="2.2"
-          strokeLinecap="round"
-        />
-
-        {/* the curled fingers, stacked on the knuckle side only */}
-        <path
-          d="M106 148 C132 141 160 143 178 152"
-          fill="none"
-          stroke={lame}
-          strokeWidth="2.4"
-          strokeLinecap="round"
-        />
-        <path
-          d="M110 179 C134 172 157 174 173 183"
+          d="M56 106 C74 98 88 104 96 118"
           fill="none"
           stroke={lame}
           strokeWidth="2.4"
           strokeLinecap="round"
         />
 
-        {/* light along the curled index, so the plate reads as convex */}
+        {/* the bracer: wider than the fist, so the wrist reads as a forearm */}
         <path
-          d="M98 120 C126 113 154 116 175 130"
-          fill="none"
-          stroke={shine}
-          strokeWidth="3"
-          strokeLinecap="round"
-          opacity="0.6"
-        />
-
-        {/* the vambrace: distinctly narrower than the fist, flaring beyond it */}
-        <path
-          d="M70 208 L154 208 L166 239 Q166 251 151 251 L73 251 Q58 251 58 239 Z"
+          d="M44 186 L196 186 L204 214 Q204 224 192 224 L48 224 Q36 224 36 214 Z"
           fill={`url(#${cuff})`}
           stroke={edge}
           strokeWidth="2.6"
           strokeLinejoin="round"
         />
-        <path d="M64 230 L160 230" stroke={lame} strokeWidth="2" />
-        {/* rivets */}
-        {[88, 112, 136].map((x) => (
-          <circle key={x} cx={x} cy="220" r="3.2" fill={edge} opacity="0.6" />
+        <path d="M42 206 L198 206" stroke={lame} strokeWidth="2" />
+        {[70, 105, 140, 175].map((x) => (
+          <circle key={x} cx={x} cy="196" r="3.2" fill={edge} opacity="0.6" />
         ))}
       </g>
     </svg>
