@@ -136,6 +136,12 @@ export function decodePetition(token: string): JudgeRequest | null {
   return parsed.success ? parsed.data : null;
 }
 
+/**
+ * No screen offers a link any more — the results page hands over a PDF instead.
+ * The encoder stays because `/j/[token]` still serves every link already shared,
+ * and a decoder is only trustworthy if something can produce the bytes it reads:
+ * the round-trip tests are what keep the column order honest.
+ */
 export function permalinkPath(req: JudgeRequest): string {
   return `/j/${encodePetition(req)}`;
 }

@@ -1,10 +1,16 @@
 import { describe, expect, it } from 'vitest';
 
-import { buildCharter, charterFilename, rollNumber } from '@/lib/charter';
+import {
+  buildCharter,
+  buildWarrant,
+  charterFilename,
+  rollNumber,
+  warrantFilename,
+} from '@/lib/charter';
 import { ordinal } from '@/lib/model/percentile';
 import { projectTwelveMonths } from '@/lib/metrics';
 import { bandFor, computeSuccessLikelihood } from '@/lib/scoring';
-import type { EvaluatedResult, JudgeRequest, Rubric } from '@/lib/schemas';
+import type { EvaluatedResult, JudgeRequest, RejectedResult, Rubric } from '@/lib/schemas';
 
 const RUBRIC: Rubric = {
   problem_intensity: 8,
@@ -153,5 +159,53 @@ describe('charterFilename', () => {
   it('survives a name that is entirely punctuation', () => {
     const charter = { ...buildCharter(evaluated(), petition()), venture: '«»—///' };
     expect(charterFilename(charter)).toBe('grimyapper-charter-venture.pdf');
+  });
+});
+
+function rejected(): RejectedResult {
+  return {
+    outcome: 'rejected',
+    classification: { is_ai_startup: false, confidence: 0.88, reason: 'nothing thinks here' },
+    rejection: {
+      verdict: 'REJECTED',
+      cause_of_death: 'The engines shall offer this freely as a mere convenience.',
+      time_of_death: 'Midwinter, twenty-seven.',
+      eulogy: 'It was a reasonable idea, and reasonable is what the engines are cheapest at.',
+      ai_that_replaces_it: 'An automaton clerk that works for the price of electricity',
+    },
+  };
+}
+
+describe('buildWarrant', () => {
+  it('carries every line the decree prints on screen', () => {
+    const w = buildWarrant(rejected(), petition());
+    expect(w.cause).toBe(rejected().rejection.cause_of_death);
+    expect(w.hour).toBe(rejected().rejection.time_of_death);
+    expect(w.lament).toBe(rejected().rejection.eulogy);
+    expect(w.supplantedBy).toBe(rejected().rejection.ai_that_replaces_it);
+  });
+
+  it('marks the claim refuted only when the petitioner swore it was AI', () => {
+    expect(buildWarrant(rejected(), petition({ declared: 'ai' })).claimRefuted).toBe(true);
+    expect(buildWarrant(rejected(), petition({ declared: 'none' })).claimRefuted).toBe(false);
+    expect(buildWarrant(rejected(), petition({ declared: 'unstated' })).claimRefuted).toBe(false);
+  });
+
+  it('substitutes readable text for every blank field', () => {
+    const w = buildWarrant(rejected(), petition({ name: '', customer: '', moat: '', capital: '' }));
+    for (const v of [w.venture, w.guilds, w.treasury, w.alchemy]) {
+      expect(v.trim().length).toBeGreaterThan(0);
+    }
+  });
+
+  it('shares its roll number with the charter, so one petition means one roll', () => {
+    const p = petition();
+    expect(buildWarrant(rejected(), p).roll).toBe(rollNumber(`${p.idea}${p.name}`));
+  });
+
+  it('names the file as a decree, not a charter', () => {
+    expect(warrantFilename(buildWarrant(rejected(), petition()))).toBe(
+      'grimyapper-decree-the-synergx-engine.pdf',
+    );
   });
 });

@@ -1,7 +1,7 @@
 import type { jsPDF as JsPDF } from 'jspdf';
 
-import type { Charter } from './charter';
-import { charterFilename } from './charter';
+import type { Charter, Warrant } from './charter';
+import { charterFilename, warrantFilename } from './charter';
 
 /**
  * The Charter of Sovereign Blessing, written straight into a PDF.
@@ -72,6 +72,133 @@ export async function downloadCharter(charter: Charter): Promise<void> {
   attestation(doc, charter);
 
   doc.save(charterFilename(charter));
+}
+
+/* --------------------------------------------------------------- the warrant */
+
+/**
+ * The decree of extinction, on the same leaf as the charter.
+ *
+ * Deliberately the same paper, border and seal: a court that issued its
+ * refusals on visibly cheaper stock would be telling on itself. Only the
+ * pigment changes — vermilion where the charter is gilt — and the seal is
+ * struck through.
+ */
+export async function downloadWarrant(warrant: Warrant): Promise<void> {
+  const { jsPDF } = await import('jspdf');
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+  ground(doc);
+  border(doc);
+
+  centred(doc, 'BY ORDER OF THE SOVEREIGN COURT OF GRIMYAPPER', 30, {
+    font: ['times', 'normal'],
+    size: 8.5,
+    color: INK_SOFT,
+    charSpace: 1.5,
+  });
+  centred(doc, 'Decreed Warrant of Extinction', 44, {
+    font: ['times', 'bold'],
+    size: 30,
+    color: INK,
+  });
+  rule(doc, 82, W - 82, 50.5);
+  centred(doc, 'FOUND LACKING IN THE DIVINE SPARK OF ARTIFICE', 57, {
+    font: ['times', 'normal'],
+    size: 8,
+    color: VERMILION,
+    charSpace: 1.8,
+  });
+
+  const size = fit(doc, warrant.venture, W - 90, 22, 13, ['times', 'bold']);
+  centred(doc, warrant.venture, 72, { font: ['times', 'bold'], size, color: INK });
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(10.5);
+  doc.setTextColor(...INK_SOFT);
+  (doc.splitTextToSize(`“${warrant.petition}”`, W - 110) as string[])
+    .slice(0, 3)
+    .forEach((line, i) => doc.text(line, W / 2, 81 + i * 5, { align: 'center' }));
+
+  // The findings, in two columns so neither runs long.
+  const rows: Array<[string, string]> = [
+    ['Manner of its undoing', warrant.cause],
+    ['The hour appointed', warrant.hour],
+    ['Supplanted by', warrant.supplantedBy],
+    ['Target guilds', warrant.guilds],
+    ['Treasury reserves', warrant.treasury],
+    ['Secret alchemy pleaded', warrant.alchemy],
+  ];
+
+  rows.forEach(([label, value], i) => {
+    const col = i < 3 ? M + 14 : W / 2 + 6;
+    const y = BODY_TOP + (i % 3) * 18;
+    const width = W / 2 - M - 24;
+
+    doc.setFont('times', 'normal');
+    doc.setFontSize(6.5);
+    doc.setTextColor(...VERMILION);
+    doc.setCharSpace(0.9);
+    doc.text(label.toUpperCase(), col, y);
+    doc.setCharSpace(0);
+
+    doc.setFontSize(9.5);
+    doc.setTextColor(...INK);
+    (doc.splitTextToSize(value, width) as string[])
+      .slice(0, 2)
+      .forEach((line, n) => doc.text(line, col, y + 5 + n * 4.4));
+
+    doc.setDrawColor(...INK_SOFT);
+    doc.setLineWidth(0.15);
+    doc.line(col, y + 14, col + width, y + 14);
+  });
+
+  // The lament, given the weight it has on screen.
+  doc.setDrawColor(...VERMILION);
+  doc.setLineWidth(0.9);
+  doc.line(M + 14, ATTEST_TOP - 12, M + 14, ATTEST_TOP - 1);
+  doc.setFont('times', 'italic');
+  doc.setFontSize(11);
+  doc.setTextColor(...INK);
+  (doc.splitTextToSize(warrant.lament, W - 120) as string[])
+    .slice(0, 2)
+    .forEach((line, i) => doc.text(line, M + 19, ATTEST_TOP - 7 + i * 5));
+
+  rule(doc, M + 12, W - M - 12, ATTEST_TOP + 4);
+
+  doc.setFont('times', 'italic');
+  doc.setFontSize(8.5);
+  doc.setTextColor(...INK_SOFT);
+  doc.text(
+    warrant.claimRefuted
+      ? 'The petitioner swore this venture wrought with thinking engines. The assayer, reading the petition itself, found none.'
+      : 'No rubric was applied and no reckoning was made. This court does not assay a trade it expects to be swallowed whole.',
+    M + 14,
+    ATTEST_TOP + 11,
+    { maxWidth: 148 },
+  );
+
+  doc.setFont('times', 'normal');
+  doc.setFontSize(6.5);
+  doc.setCharSpace(0.8);
+  doc.text(
+    `ROLL ${warrant.roll}  ·  SEALED THIS ${warrant.sealedOn.toUpperCase()}`,
+    M + 14,
+    ATTEST_TOP + 19,
+  );
+  doc.setCharSpace(0);
+
+  doc.setFontSize(6);
+  doc.text(
+    'Grimyapper is a jest with real machinery beneath it. This is entertainment, and not counsel upon money.',
+    M + 14,
+    ATTEST_TOP + 23.5,
+  );
+
+  signature(doc, W - M - 116, ATTEST_TOP + 17);
+  seal(doc, W - M - 32, ATTEST_TOP + 15, true);
+
+  doc.save(warrantFilename(warrant));
 }
 
 /* ------------------------------------------------------------------ the leaf */
@@ -345,7 +472,7 @@ function signature(doc: JsPDF, x: number, y: number): void {
 }
 
 /** The wax: an irregular disc, a pressed rim, and the signet mark. */
-function seal(doc: JsPDF, cx: number, cy: number): void {
+function seal(doc: JsPDF, cx: number, cy: number, struck = false): void {
   const R = 13;
 
   /*
@@ -372,7 +499,14 @@ function seal(doc: JsPDF, cx: number, cy: number): void {
   doc.setFont('times', 'bold');
   doc.setFontSize(17);
   doc.setTextColor(255, 232, 220);
-  doc.text('G', cx, cy + 3.2, { align: 'center' });
+  doc.text(struck ? 'X' : 'G', cx, cy + 3.2, { align: 'center' });
+
+  if (struck) {
+    // The signet cancelled: a bar across the wax, as a void stamp is struck.
+    doc.setDrawColor(255, 232, 220);
+    doc.setLineWidth(1.1);
+    doc.line(cx - R * 0.62, cy + R * 0.42, cx + R * 0.62, cy - R * 0.42);
+  }
 }
 
 /* ------------------------------------------------------------------ plumbing */

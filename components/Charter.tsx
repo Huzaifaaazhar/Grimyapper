@@ -1,8 +1,9 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
+import { DownloadLeaf } from './DownloadLeaf';
 import { Fleuron, WaxSeal } from './Ornaments';
 import { buildCharter } from '@/lib/charter';
 import type { EvaluatedResult, JudgeRequest } from '@/lib/schemas';
@@ -15,8 +16,6 @@ import type { EvaluatedResult, JudgeRequest } from '@/lib/schemas';
  * the PDF, so all three say exactly the same words.
  */
 
-type State = 'idle' | 'writing' | 'failed';
-
 export function Charter({
   result,
   petition,
@@ -25,23 +24,6 @@ export function Charter({
   petition: JudgeRequest;
 }) {
   const charter = useMemo(() => buildCharter(result, petition), [result, petition]);
-  const [state, setState] = useState<State>('idle');
-
-  const download = async () => {
-    setState('writing');
-    try {
-      /*
-       * jsPDF is ~350 KB and most visitors never press this. Loading it here
-       * keeps it out of the initial bundle entirely, at the cost of a beat's
-       * delay on the first click — which the "engrossing" label covers.
-       */
-      const { downloadCharter } = await import('@/lib/charter-pdf');
-      await downloadCharter(charter);
-      setState('idle');
-    } catch {
-      setState('failed');
-    }
-  };
 
   return (
     <motion.section
@@ -116,26 +98,15 @@ export function Charter({
         </footer>
       </div>
 
-      <div className="mt-8 flex flex-col items-center gap-3">
-        <button
-          type="button"
-          onClick={download}
-          disabled={state === 'writing'}
-          className="group inline-flex items-center gap-4 border-2 border-[var(--color-gilt-deep)] bg-[rgba(212,175,55,0.13)] px-8 py-4 transition-colors hover:bg-[rgba(212,175,55,0.24)] disabled:cursor-wait disabled:opacity-60"
-        >
-          <span aria-hidden className="text-xl text-gold">
-            ⤓
-          </span>
-          <span className="blackletter text-2xl text-ink sm:text-3xl">
-            {state === 'writing' ? 'The scribe is engrossing it…' : 'Download the sealed charter'}
-          </span>
-        </button>
-        <p className="text-xs italic text-ink-faint">
-          {state === 'failed'
-            ? 'The scribe could not finish the leaf. Try once more.'
-            : 'A single leaf, drawn in full, ready for the press.'}
-        </p>
-      </div>
+      <DownloadLeaf
+        label="Download the sealed charter"
+        busyLabel="The scribe is engrossing it…"
+        note="A single leaf, drawn in full, ready for the press."
+        onDownload={async () => {
+          const { downloadCharter } = await import('@/lib/charter-pdf');
+          await downloadCharter(charter);
+        }}
+      />
     </motion.section>
   );
 }

@@ -1,6 +1,11 @@
 import { ordinal, percentileFor, standingFor } from './model/percentile';
 import { RUBRIC_LABELS, RUBRIC_PLAIN } from './scoring';
-import { RUBRIC_AXES, type EvaluatedResult, type JudgeRequest } from './schemas';
+import {
+  RUBRIC_AXES,
+  type EvaluatedResult,
+  type JudgeRequest,
+  type RejectedResult,
+} from './schemas';
 
 /**
  * Everything printed on the Charter of Sovereign Blessing, derived in one pure
@@ -118,4 +123,60 @@ export function charterFilename(charter: Charter): string {
       .replace(/^-|-$/g, '')
       .slice(0, 48) || 'venture';
   return `grimyapper-charter-${slug}.pdf`;
+}
+
+/* --------------------------------------------------------------- the warrant */
+
+/**
+ * The refused half of the same document.
+ *
+ * A rejected petition gets a leaf too. Same derivation rule as the charter:
+ * screen, PDF and tests all read this one object, so the printed decree cannot
+ * drift from the one on the page.
+ */
+export type Warrant = {
+  venture: string;
+  petition: string;
+  cause: string;
+  hour: string;
+  supplantedBy: string;
+  lament: string;
+  guilds: string;
+  treasury: string;
+  alchemy: string;
+  roll: string;
+  sealedOn: string;
+  /** True when the petitioner swore it was AI and the assayer disagreed. */
+  claimRefuted: boolean;
+};
+
+export function buildWarrant(
+  result: RejectedResult,
+  petition: JudgeRequest,
+  now: Date = new Date(),
+): Warrant {
+  return {
+    venture: petition.name?.trim() || 'A venture yet unnamed',
+    petition: petition.idea,
+    cause: result.rejection.cause_of_death,
+    hour: result.rejection.time_of_death,
+    supplantedBy: result.rejection.ai_that_replaces_it,
+    lament: result.rejection.eulogy,
+    guilds: petition.customer?.trim() || 'Guilds unnamed',
+    treasury: petition.capital?.trim() || 'Coffers undeclared',
+    alchemy: petition.moat?.trim() || 'No secret alchemy was pleaded.',
+    roll: rollNumber(`${petition.idea}${petition.name}`),
+    sealedOn: DATE.format(now),
+    claimRefuted: petition.declared === 'ai',
+  };
+}
+
+export function warrantFilename(warrant: Warrant): string {
+  const slug =
+    warrant.venture
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 48) || 'venture';
+  return `grimyapper-decree-${slug}.pdf`;
 }

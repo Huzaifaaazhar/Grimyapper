@@ -1,19 +1,11 @@
 'use client';
 
 import { AppealForm } from './AppealForm';
+import { DownloadLeaf } from './DownloadLeaf';
 import { Fleuron, Lozenges, WaxSeal } from './Ornaments';
+import { buildWarrant, rollNumber } from '@/lib/charter';
 import { useStagedReveal } from '@/lib/useStagedReveal';
 import type { JudgeRequest, JudgeResult, RejectedResult } from '@/lib/schemas';
-
-/** Deterministic, so the same petition always bears the same roll number. */
-function rollNumber(seed: string): string {
-  let h = 2166136261;
-  for (let i = 0; i < seed.length; i += 1) {
-    h ^= seed.charCodeAt(i);
-    h = Math.imul(h, 16777619);
-  }
-  return `MMXXVI · ${String(Math.abs(h) % 10000).padStart(4, '0')}`;
-}
 
 function Entry({
   label,
@@ -124,7 +116,20 @@ export function DeathCertificate({
         </div>
       </div>
 
-      <p className="mx-auto mt-6 max-w-lg text-center text-sm italic leading-relaxed text-ink-soft">
+      {petition && (
+        <DownloadLeaf
+          tone="vermilion"
+          label="Download the sealed decree"
+          busyLabel="The scribe is engrossing it…"
+          note="A single leaf, drawn in full, ready for the press."
+          onDownload={async () => {
+            const { downloadWarrant } = await import('@/lib/charter-pdf');
+            await downloadWarrant(buildWarrant(result, petition));
+          }}
+        />
+      )}
+
+      <p className="mx-auto mt-8 max-w-lg text-center text-sm italic leading-relaxed text-ink-soft">
         No rubric was applied. No reckoning was made. This court does not assay a trade it
         expects to be swallowed whole as a mere convenience.
       </p>

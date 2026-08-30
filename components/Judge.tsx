@@ -9,7 +9,6 @@ import { DeathCertificate } from '@/components/DeathCertificate';
 import { Dossier } from '@/components/Dossier';
 import { Fleuron, Lozenges } from '@/components/Ornaments';
 import { PitchForm } from '@/components/PitchForm';
-import { ShareLink } from '@/components/ShareLink';
 import { VerdictOverture } from '@/components/VerdictOverture';
 import type { JudgeRequest, JudgeResult } from '@/lib/schemas';
 
@@ -220,8 +219,6 @@ export function Judge({
                   <Dossier result={settled.result} idea={settled.petition.idea} />
                 </>
               )}
-
-              <ShareLink petition={settled.petition} />
 
               <div className="mt-14 flex justify-center">
                 <button
