@@ -80,7 +80,7 @@ export function ExecutionScene({
        * deliberately — black wax lit by a bonfire renders bright orange and
        * stops reading as wax at all.
        */}
-      <group position={[0.02, -0.26 + sealDrop, 0.5]} rotation={[-Math.PI / 2.6, 0, 0]}>
+      <group position={[0, -0.26 + sealDrop, 0.5]} rotation={[-Math.PI / 2.6, 0, 0]}>
         <WaxSeal mark="X" scale={0.3} pressed={sealIn} color="#5e120f" />
       </group>
 

@@ -2,7 +2,7 @@
 
 import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
-import { useState, type ReactNode } from 'react';
+import { useRef, useState, type ReactNode } from 'react';
 
 import type { Capability } from '@/lib/motion/useCapability';
 
@@ -34,13 +34,22 @@ export function Hall({
   className?: string;
 }) {
   const [quality, setQuality] = useState<Quality>('high');
+  /*
+   * The current notch is mirrored in a ref so the guard can be read without a
+   * functional updater. Calling onQuality from inside one notified the parent
+   * during React's render phase — "Cannot update a component while rendering a
+   * different component" — because React runs updater functions there.
+   *
+   * PerformanceMonitor's callbacks fire from its own frame loop, so updating
+   * state from them is ordinary.
+   */
+  const current = useRef<Quality>('high');
 
   const step = (next: Quality) => {
-    setQuality((prev) => {
-      if (prev === next) return prev;
-      onQuality?.(next);
-      return next;
-    });
+    if (current.current === next) return;
+    current.current = next;
+    setQuality(next);
+    onQuality?.(next);
   };
 
   return (

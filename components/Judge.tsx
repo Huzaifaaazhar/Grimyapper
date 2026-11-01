@@ -1,6 +1,6 @@
 'use client';
 
-import { AnimatePresence, useReducedMotion } from 'framer-motion';
+import { AnimatePresence, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { Charter } from '@/components/Charter';

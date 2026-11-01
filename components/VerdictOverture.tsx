@@ -1,211 +1,179 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
-import { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
-import { Embers } from './Embers';
-import { Gauntlet } from './Heraldry';
-import { WaxSeal } from './Ornaments';
+import { useCapability } from '@/lib/motion/useCapability';
+import { useExecutionTimeline } from '@/lib/motion/useExecutionTimeline';
+import { enableSound, soundEnabled } from '@/lib/motion/thud';
 
 /**
  * The sentence, delivered before the document that records it.
  *
- * The overture is a curtain over the whole viewport that runs once and then
- * dismisses itself. It is skippable at any moment — by click, by Escape, or by
- * waiting — because a person on their fourth petition should not be made to sit
- * through it a fourth time.
+ * There is no gauntlet any more. A cartoon hand pointing up or down is a label
+ * stuck on the verdict; the document's own fate *is* the verdict, so an
+ * execution burns the warrant and a blessing gilds the charter.
  *
- * Under `prefers-reduced-motion` the whole thing collapses to a still frame
- * held briefly: the gauntlet and the words are the content, the shaking and the
- * flash are decoration, and only the decoration is dropped.
+ * The 3D is behind a dynamic import and only mounts once a sequence actually
+ * starts, so three.js, the shaders and a GL context are costs paid by people
+ * who reached a verdict rather than by everyone who loaded the form.
+ *
+ * Skippable from 0.8s by click, Escape, Enter or space. Anyone on their fourth
+ * petition should not be made to sit through a fourth ceremony.
  */
+
+const VerdictCanvas = dynamic(
+  () => import('@/components/three/VerdictCanvas').then((m) => m.VerdictCanvas),
+  { ssr: false, loading: () => null },
+);
 
 type Verdict = 'rejected' | 'blessed';
 
-const COPY: Record<Verdict, { kicker: string; title: string; line: string; seal: string }> = {
+const COPY: Record<Verdict, { kicker: string; title: string; line: string }> = {
   rejected: {
-    kicker: 'His Majesty turns his thumb',
+    kicker: 'The court commits it to the fire',
     title: 'Execution',
     line: 'This venture is found lacking in the divine spark of artifice, and is banisht.',
-    seal: 'Condemned',
   },
   blessed: {
-    kicker: 'His Majesty raises his thumb',
+    kicker: 'The court sets its gold upon it',
     title: 'Royal favour',
     line: 'This venture is wrought with thinking engines, and shall be assayed in full.',
-    seal: 'Blessed',
   },
 };
 
 export function VerdictOverture({
   verdict,
   onDone,
-  hold = 2900,
 }: {
   verdict: Verdict;
   onDone: () => void;
-  hold?: number;
 }) {
-  const still = useReducedMotion();
+  const cap = useCapability();
   const [open, setOpen] = useState(true);
+  const [skippable, setSkippable] = useState(false);
   const dismissed = useRef(false);
   const copy = COPY[verdict];
 
-  /*
-   * One dismissal path, however it was triggered. Without the ref, a click
-   * landing in the same tick as the timer would call `onDone` twice and the
-   * caller would advance two phases.
-   */
-  useEffect(() => {
-    const finish = () => {
-      if (dismissed.current) return;
-      dismissed.current = true;
-      setOpen(false);
-      // Long enough for the exit transition, short enough not to feel stuck.
-      window.setTimeout(onDone, still ? 0 : 420);
-    };
+  const finish = useCallback(() => {
+    if (dismissed.current) return;
+    dismissed.current = true;
+    setOpen(false);
+    window.setTimeout(onDone, cap.reduced ? 0 : 380);
+  }, [onDone, cap.reduced]);
 
-    const timer = window.setTimeout(finish, still ? 1100 : hold);
+  const timeline = useExecutionTimeline({
+    play: cap.ready,
+    reduced: cap.reduced,
+    sound: soundEnabled(),
+    onDone: finish,
+  });
+
+  // The skip control appears after 0.8s, per the brief: early enough to escape,
+  // late enough not to invite skipping before anything has happened.
+  useEffect(() => {
+    const id = window.setTimeout(() => setSkippable(true), 800);
+    return () => clearTimeout(id);
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') finish();
+      if (e.key === 'Escape' || e.key === 'Enter' || e.key === ' ') {
+        timeline.skip();
+        finish();
+      }
     };
     window.addEventListener('keydown', onKey);
-    window.addEventListener('pointerdown', finish);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [timeline, finish]);
 
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener('keydown', onKey);
-      window.removeEventListener('pointerdown', finish);
-    };
-  }, [hold, onDone, still]);
+  if (!open) return null;
 
   const crimson = verdict === 'rejected';
 
   return (
-    <AnimatePresence>
-      {open && (
-        <motion.div
-          className="hall fixed inset-0 z-50 flex items-center justify-center overflow-hidden px-6"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: still ? 0 : 0.35 }}
-          role="alertdialog"
-          aria-label={`${copy.title}. ${copy.line}`}
-        >
-          <Embers tone={crimson ? 'ember' : 'gilt'} density={crimson ? 78 : 56} />
+    <div
+      className="hall fixed inset-0 z-50 flex flex-col overflow-hidden"
+      role="alertdialog"
+      aria-label={`${copy.title}. ${copy.line}`}
+      style={{
+        opacity: open ? 1 : 0,
+        transition: cap.reduced ? 'none' : 'opacity 380ms ease',
+      }}
+    >
+      {/*
+       * The scene. Absent entirely without WebGL or under reduced motion — the
+       * fallback below is the final lit frame as flat CSS, which is what those
+       * readers get instead of a degraded animation.
+       */}
+      {/*
+       * The scene takes the upper three fifths and the words the lower two.
+       * Full-bleed, they collided: the subject of both sits at the centre of
+       * the frame, so the title landed on top of the burning leaf.
+       */}
+      <div className="relative min-h-0 flex-[3]">
+        {cap.webgl && !cap.reduced && (
+          <VerdictCanvas
+            verdict={verdict}
+            progress={timeline.progress}
+            shake={timeline.shake}
+            cap={cap}
+          />
+        )}
+        {/* Scrim, so embers drifting down never sit behind the first line. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-24"
+          style={{ background: 'linear-gradient(to bottom, transparent, #14100a)' }}
+        />
+      </div>
 
-          {/* the flash: crimson for a sentence of death, gold for favour */}
-          {!still && (
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute inset-0"
-              style={{
-                background: crimson
-                  ? 'radial-gradient(ellipse at 50% 45%, rgba(196,66,58,0.62), rgba(94,18,15,0.5) 55%, transparent 78%)'
-                  : 'radial-gradient(ellipse at 50% 45%, rgba(255,236,170,0.7), rgba(212,175,55,0.34) 52%, transparent 76%)',
-              }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: [0, 1, 0.24, 0.4] }}
-              transition={{ duration: 1.5, times: [0, 0.12, 0.4, 1], delay: 0.55 }}
-            />
-          )}
-
-          {/* the rays behind a blessing, which a condemnation does not get */}
-          {!crimson && !still && (
-            <motion.div
-              aria-hidden
-              className="pointer-events-none absolute left-1/2 top-1/2 h-[150vmax] w-[150vmax] -translate-x-1/2 -translate-y-1/2"
-              style={{
-                background:
-                  'repeating-conic-gradient(from 0deg at 50% 50%, rgba(255,232,160,0.14) 0deg 5deg, transparent 5deg 13deg)',
-              }}
-              initial={{ opacity: 0, rotate: 0 }}
-              animate={{ opacity: 0.9, rotate: 22 }}
-              transition={{ duration: 7, ease: 'linear', delay: 0.5 }}
-            />
-          )}
-
-          <div
-            className={`relative flex flex-col items-center text-center ${
-              crimson && !still ? 'struck' : ''
-            }`}
-            style={crimson && !still ? { animationDelay: '0.58s' } : undefined}
-          >
-            <motion.div
-              // The hand comes down from above, and lands hard.
-              initial={{ opacity: 0, y: still ? 0 : -160, scale: still ? 1 : 0.72 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={
-                still
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 180, damping: 13, mass: 1.1, delay: 0.15 }
-              }
-            >
-              <Gauntlet verdict={crimson ? 'down' : 'up'} size={190} className="sm:hidden" />
-              <Gauntlet verdict={crimson ? 'down' : 'up'} size={250} className="hidden sm:block" />
-            </motion.div>
-
-            <motion.p
-              className="titling mt-8 text-[0.66rem] sm:text-xs"
-              style={{ color: crimson ? '#e08a7d' : '#f3d886' }}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: still ? 0 : 0.85, duration: still ? 0 : 0.5 }}
-            >
-              {copy.kicker}
-            </motion.p>
-
-            <motion.h2
-              className="blackletter mt-3 text-5xl leading-none sm:text-7xl"
-              style={{ color: crimson ? '#e8b4aa' : '#f7e6b4' }}
-              initial={{ opacity: 0, scale: still ? 1 : 1.25 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: still ? 0 : 0.85, duration: still ? 0 : 0.55 }}
-            >
-              {copy.title}
-            </motion.h2>
-
-            <motion.p
-              className="mt-5 max-w-md text-lg italic leading-snug text-[rgba(233,223,198,0.78)] sm:text-xl"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: still ? 0 : 1.15, duration: still ? 0 : 0.5 }}
-            >
-              {copy.line}
-            </motion.p>
-
-            {/* the wax comes down onto the sentence */}
-            <motion.div
-              className="relative mt-9"
-              initial={{ opacity: 0, scale: still ? 1 : 2.6, rotate: still ? -7 : -30 }}
-              animate={{ opacity: 1, scale: 1, rotate: -7 }}
-              transition={
-                still
-                  ? { duration: 0 }
-                  : { type: 'spring', stiffness: 320, damping: 15, delay: 1.35 }
-              }
-            >
-              <WaxSeal mark={crimson ? 'X' : 'G'} size={86} tilt={0} />
-              <p
-                className="titling mt-3 text-[0.6rem]"
-                style={{ color: crimson ? '#e08a7d' : '#f3d886' }}
-              >
-                {copy.seal}
-              </p>
-            </motion.div>
-
-            <motion.p
-              className="titling mt-10 text-[0.58rem] text-[rgba(233,223,198,0.4)]"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: still ? 0 : 1.9, duration: 0.6 }}
-            >
-              Touch anywhere to read the decree
-            </motion.p>
-          </div>
-        </motion.div>
+      {!cap.webgl && (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background: crimson
+              ? 'radial-gradient(ellipse at 50% 46%, rgba(196,66,58,0.5), rgba(94,18,15,0.42) 52%, transparent 76%)'
+              : 'radial-gradient(ellipse at 50% 46%, rgba(255,236,170,0.55), rgba(212,175,55,0.3) 50%, transparent 74%)',
+          }}
+        />
       )}
-    </AnimatePresence>
+
+      <div className="relative z-10 flex flex-[2] flex-col items-center justify-start px-6 pb-8 text-center">
+        <p
+          className="titling text-[0.66rem] sm:text-xs"
+          style={{ color: crimson ? '#e08a7d' : '#f3d886' }}
+        >
+          {copy.kicker}
+        </p>
+
+        <h2
+          className="blackletter mt-3 text-5xl leading-none sm:text-7xl"
+          style={{ color: crimson ? '#e8b4aa' : '#f7e6b4' }}
+        >
+          {copy.title}
+        </h2>
+
+        <p className="mt-5 max-w-md text-lg leading-snug text-[rgba(233,223,198,0.78)] italic sm:text-xl">
+          {copy.line}
+        </p>
+
+        {skippable && (
+          <button
+            type="button"
+            onClick={() => {
+              // A real gesture: the only place sound is ever armed.
+              enableSound();
+              timeline.skip();
+              finish();
+            }}
+            className="titling mt-12 border border-[rgba(233,223,198,0.3)] px-6 py-2.5 text-[0.58rem] text-[rgba(233,223,198,0.55)] transition-colors hover:border-[rgba(233,223,198,0.6)] hover:text-[rgba(233,223,198,0.9)]"
+          >
+            Skip · read the decree
+          </button>
+        )}
+      </div>
+    </div>
   );
 }
