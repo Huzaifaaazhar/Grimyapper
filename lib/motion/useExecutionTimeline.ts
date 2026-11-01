@@ -7,17 +7,47 @@ import { registerEases } from './eases';
 import { thud } from './thud';
 
 /**
- * One master timeline per sequence, with labelled beats.
+ * The verdict sequence's clock.
  *
- * The timeline owns *pacing* and nothing else: it writes two numbers, progress
- * and shake, into a state the scene reads. Keeping the staging out of here is
- * what lets the same sequence be scrubbed in the lab, played in the app, or
- * snapped to its final frame for reduced motion without three code paths.
+ * **Driven by wall time, not by the frame loop.** This is the important
+ * decision in the file, and it was made after watching recordings rather than
+ * reasoning about it.
  *
- * Returns the live values plus controls, so a caller can skip.
+ * The obvious implementation is a GSAP timeline tweening a progress value, and
+ * that is what this was. GSAP ticks on requestAnimationFrame, which is correct
+ * for almost everything — but this sequence *is* the thing starving rAF. The
+ * blessing renders god rays, bloom and three thousand particles; when a frame
+ * costs more than a frame's worth of time the ticker fires rarely, and a
+ * timeline that only advances on ticks barely advances at all. In the recorded
+ * frames the charter was still mid-entrance on the last frame of a sixteen
+ * second capture.
+ *
+ * GSAP's lag smoothing makes it worse — by default it pretends only 33ms
+ * elapsed whenever a frame exceeds 500ms — but turning that off is not enough,
+ * because a starved ticker still only advances when it fires.
+ *
+ * So progress is computed from `performance.now()` on an interval and the named
+ * CustomEases are applied by hand through `gsap.parseEase`. The curves, which
+ * are the whole point of the easing vocabulary, are unchanged; only the thing
+ * sampling them has moved. The sequence now takes the same wall-clock time on a
+ * machine rendering at 60fps and on one rendering at three, which is the
+ * guarantee a reader waiting behind it actually needs.
+ *
+ * A slow device therefore sees a choppier sequence of the right length instead
+ * of a smooth sequence of unbounded length.
  */
 
 export type SequenceState = { progress: number; shake: number; done: boolean };
+
+/* The beats, in seconds. The total is the overture's budget from the brief. */
+const HANG_END = 0.42;
+const BURN_END = 2.92;
+const SLAM_AT = 1.87;
+const SLAM_FOR = 0.62;
+export const SEQUENCE_SECONDS = 3.2;
+
+/** Ten updates a second is ample for a value feeding a shader uniform. */
+const TICK_MS = 100;
 
 export function useExecutionTimeline({
   play,
@@ -31,136 +61,93 @@ export function useExecutionTimeline({
   onDone?: () => void;
 }) {
   const [state, setState] = useState<SequenceState>({ progress: 0, shake: 0, done: false });
-  const tl = useRef<gsap.core.Timeline | null>(null);
+
   /*
    * onDone is held in a ref and deliberately kept out of the effect's deps.
    *
    * Callers pass it as an inline arrow, so its identity changes on every parent
    * render — and this hook re-renders its parent on every tick. With onDone in
    * the dependency array that is a loop: tick, re-render, new callback, effect
-   * re-runs, timeline rebuilt from zero. The sequence restarts forever and the
-   * burn never reaches its end, which is exactly how it showed up in the
-   * recorded frames.
+   * re-runs, sequence restarts from zero, and it never reaches its end.
    */
   const done = useRef(onDone);
   done.current = onDone;
-  // Mutated by the tweens, read once per tick: avoids a setState per property.
-  const vals = useRef({ progress: 0, shake: 0 });
+
   const finished = useRef(false);
+  const halt = useRef<(() => void) | null>(null);
 
   useEffect(() => {
     if (!play) return;
     registerEases();
 
+    const finish = () => {
+      if (finished.current) return;
+      finished.current = true;
+      setState({ progress: 1, shake: 0, done: true });
+      done.current?.();
+    };
+
+    finished.current = false;
+
     if (reduced) {
       /*
-       * No shaders burning, no shake, no particles — the caller drops those.
-       * The sequence collapses to its final lit frame, held just long enough to
+       * No shaders, no particles, no shake — the caller drops those. The
+       * sequence collapses to its final lit frame, held just long enough to
        * register as an event rather than a flicker.
        */
       setState({ progress: 1, shake: 0, done: false });
-      const id = window.setTimeout(() => {
-        setState({ progress: 1, shake: 0, done: true });
-        done.current?.();
-      }, 200);
-      return () => clearTimeout(id);
+      const timer = window.setTimeout(finish, 200);
+      halt.current = () => clearTimeout(timer);
+      return () => clearTimeout(timer);
     }
 
-    finished.current = false;
-    vals.current.progress = 0;
-    vals.current.shake = 0;
+    // Parsed once. These are the same curves the rest of the app animates on.
+    const glide = gsap.parseEase('glide');
+    const burn = gsap.parseEase('burn');
+    const struck = gsap.parseEase('struck');
 
-    /*
-     * Lag smoothing off for the duration of the sequence, and a wall-clock
-     * backstop behind it.
-     *
-     * GSAP's default is lagSmoothing(500, 33): when a frame takes longer than
-     * half a second it pretends only 33ms elapsed, so an animation never jumps
-     * after a stall. That is the right default for a scroll-linked tween and
-     * exactly wrong for a timed sequence — on a device that cannot keep up, the
-     * timeline advances in 33ms steps per real half-second and a 2.9s sequence
-     * takes twenty. Measured here at 23.4s under software rendering, against
-     * 0.9s on the reduced-motion path.
-     *
-     * With smoothing off the timeline advances by real elapsed time: a slow
-     * device sees a choppier sequence of the correct length, which is the right
-     * trade for something the reader is waiting behind. The backstop then
-     * guarantees an exit even if the ticker stops entirely — a backgrounded tab
-     * suspends rAF, and nobody should return to a verdict page still showing
-     * the curtain.
-     */
-    gsap.ticker.lagSmoothing(0);
+    const started = performance.now();
+    let thudded = false;
 
-    const timeline = gsap.timeline({
-      onUpdate: () => {
-        setState({ progress: vals.current.progress, shake: vals.current.shake, done: false });
-      },
-      onComplete: () => {
-        if (finished.current) return;
-        finished.current = true;
-        setState({ progress: 1, shake: 0, done: true });
-        done.current?.();
-      },
-    });
+    const id = window.setInterval(() => {
+      const t = (performance.now() - started) / 1000;
 
-    timeline
-      .addLabel('hang')
-      // A held beat before anything happens. Without it the burn starts on the
-      // same frame the curtain lifts and reads as a cut, not an event.
-      .to(vals.current, { progress: 0.06, duration: 0.42, ease: 'glide' })
+      if (t >= SEQUENCE_SECONDS) {
+        clearInterval(id);
+        finish();
+        return;
+      }
 
-      .addLabel('catch')
-      // Creeps, then runs: fire does not spread at a constant rate.
-      .to(vals.current, { progress: 1, duration: 2.5, ease: 'burn' })
+      // A held beat, then the burn proper.
+      const progress =
+        t <= HANG_END
+          ? glide(t / HANG_END) * 0.06
+          : 0.06 + burn(Math.min(1, (t - HANG_END) / (BURN_END - HANG_END))) * 0.94;
 
-      .addLabel('slam', '-=1.05')
-      // The impact: one recoil, six wiggles, gone in two thirds of a second.
-      .to(
-        vals.current,
-        {
-          shake: 1,
-          duration: 0.62,
-          ease: 'struck',
-          onStart: () => {
-            if (sound) thud();
-          },
-        },
-        'slam',
-      )
-      .set(vals.current, { shake: 0 });
+      // One impact, over in two thirds of a second.
+      let shake = 0;
+      if (t >= SLAM_AT && t <= SLAM_AT + SLAM_FOR) {
+        shake = struck((t - SLAM_AT) / SLAM_FOR);
+        if (!thudded) {
+          thudded = true;
+          if (sound) thud();
+        }
+      }
 
-    tl.current = timeline;
+      setState({ progress: Math.min(1, progress), shake, done: false });
+    }, TICK_MS);
 
-    const backstop = window.setTimeout(
-      () => {
-        if (finished.current) return;
-        finished.current = true;
-        timeline.kill();
-        setState({ progress: 1, shake: 0, done: true });
-        done.current?.();
-      },
-      // The brief's cap for the overture. The timeline itself runs ~2.9s, so
-      // on any device that keeps up this never fires; on one that does not, it
-      // is what holds the sequence to its stated budget.
-      4000,
-    );
-
-    return () => {
-      clearTimeout(backstop);
-      timeline.kill();
-      tl.current = null;
-      // Restore the default for anything else on the page that relies on it.
-      gsap.ticker.lagSmoothing(500, 33);
-    };
+    halt.current = () => clearInterval(id);
+    return () => clearInterval(id);
   }, [play, reduced, sound]);
 
   const skip = () => {
+    halt.current?.();
     if (finished.current) return;
     finished.current = true;
-    tl.current?.kill();
     setState({ progress: 1, shake: 0, done: true });
     done.current?.();
   };
 
-  return { ...state, skip, duration: 3.5 };
+  return { ...state, skip, duration: SEQUENCE_SECONDS };
 }

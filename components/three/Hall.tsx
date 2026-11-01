@@ -4,6 +4,7 @@ import { PerformanceMonitor } from '@react-three/drei';
 import { Canvas } from '@react-three/fiber';
 import { useRef, useState, type ReactNode } from 'react';
 
+import { Warm } from '@/components/three/Warm';
 import type { Capability } from '@/lib/motion/useCapability';
 
 /**
@@ -26,11 +27,14 @@ export function Hall({
   cap,
   children,
   onQuality,
+  onReady,
   className = '',
 }: {
   cap: Capability;
   children: ReactNode;
   onQuality?: (q: Quality) => void;
+  /** Fired once the scene has compiled and drawn; see `Warm`. */
+  onReady?: () => void;
   className?: string;
 }) {
   const [quality, setQuality] = useState<Quality>('high');
@@ -83,6 +87,7 @@ export function Hall({
         onFallback={() => step('low')}
         flipflops={3}
       >
+        <Warm onReady={onReady} />
         {children}
       </PerformanceMonitor>
     </Canvas>

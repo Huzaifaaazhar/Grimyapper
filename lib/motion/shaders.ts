@@ -306,10 +306,20 @@ uniform float uTime;
 uniform float uSweep;    // position of the travelling highlight, 0..1
 uniform float uReveal;   // how much of the leaf has been gilded, 0..1
 uniform float uSeed;
+/*
+ * Half-extent of the un-gilded interior, in uv. This turns a plain quad into a
+ * frame of any aspect ratio, which a ringGeometry cannot do: four segments of
+ * a ring is a diamond, and even turned an eighth of a turn it is only ever
+ * square. The charter is a portrait page, so its border has to be one too.
+ * Left at (0,0) nothing is cut and the shader fills whatever it is given.
+ */
+uniform vec2 uInner;
 
 ${SIMPLEX_3D}
 
 void main(){
+  vec2 d = abs(vUv - 0.5);
+  if (d.x < uInner.x && d.y < uInner.y) discard;
   // Burnishing grain: fine, directional, and fixed to the surface.
   float grain = snoise(vec3(vUv.x * 160.0, vUv.y * 9.0, uSeed)) * 0.5 + 0.5;
 

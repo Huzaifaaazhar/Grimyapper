@@ -20,11 +20,14 @@ export function VerdictCanvas({
   progress,
   shake,
   cap,
+  onReady,
 }: {
   verdict: 'rejected' | 'blessed';
   progress: number;
   shake: number;
   cap: Capability;
+  /** Raised once the scene has compiled and drawn. The clock waits for it. */
+  onReady?: () => void;
 }) {
   const [quality, setQuality] = useState<Quality>('high');
 
@@ -36,10 +39,16 @@ export function VerdictCanvas({
    */
   const particles =
     quality === 'high' ? cap.particles : quality === 'medium' ? Math.round(cap.particles * 0.4) : 0;
-  const effects = quality === 'high';
+  /*
+   * Postprocessing starts off on a coarse pointer rather than waiting for
+   * PerformanceMonitor to notice. God rays and bloom together are the heaviest
+   * thing in either scene, and stepping down after the fact means the first
+   * second of the sequence — the part nobody can skip — is the worst one.
+   */
+  const effects = quality === 'high' && !cap.mobile;
 
   return (
-    <Hall cap={cap} onQuality={setQuality} className="absolute inset-0">
+    <Hall cap={cap} onQuality={setQuality} onReady={onReady} className="absolute inset-0">
       {verdict === 'rejected' ? (
         <ExecutionScene progress={progress} shake={shake} particles={particles} />
       ) : (

@@ -54,8 +54,18 @@ const VIEWPORTS = [
   { id: 'desktop', width: 1440, height: 900 },
 ] as const;
 
-/** How long to record from submit: curtain (3.6s) + overture (~4s) + slack. */
-const RECORD_MS = 9000;
+/**
+ * How long to record from submit.
+ *
+ * Curtain (3.6s) + the scene's warm-up + the sequence (3.2s) + slack. The
+ * warm-up is the reason this is not ~8s: the overture holds its clock until
+ * the renderer has compiled and drawn (see `Warm`), which on a GPU is a few
+ * hundred milliseconds and on this sandbox's software renderer is seconds. A
+ * recording that stopped at 9s cut off mid-entrance and looked exactly like a
+ * sequence that had frozen — which cost a long time to tell apart from one
+ * that actually had.
+ */
+const RECORD_MS = 18000;
 
 async function warm(page: Page): Promise<void> {
   await page.goto(BASE_URL, { waitUntil: 'networkidle' });

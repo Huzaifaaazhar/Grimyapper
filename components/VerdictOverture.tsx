@@ -52,8 +52,42 @@ export function VerdictOverture({
   const cap = useCapability();
   const [open, setOpen] = useState(true);
   const [skippable, setSkippable] = useState(false);
+  const [lit, setLit] = useState(false);
   const dismissed = useRef(false);
   const copy = COPY[verdict];
+
+  /*
+   * The clock does not start until the scene can draw.
+   *
+   * Measured in the page: a blessing's median frame is 16.7ms and its first
+   * one is 2731ms, because every shader in the scene compiles at the moment
+   * the sequence begins. Since the timeline is wall-clock driven, that stall
+   * does not stretch the sequence — it eats it, and the ceremony is over
+   * before a second frame is drawn.
+   *
+   * So the title and the line are shown immediately, which is the part worth
+   * reading anyway, and the 0–1 that drives the scene is held at zero until
+   * `Warm` reports a drawn frame behind them.
+   */
+  const ready = !cap.webgl || cap.reduced || lit;
+
+  /*
+   * And a watchdog, because a scene that never reports — a lost context, a
+   * driver that refuses a shader — must not leave the reader staring at a
+   * takeover with no way out but the Skip control.
+   *
+   * Five seconds, which is far longer than it sounds. On any real GPU `Warm`
+   * reports in a few hundred milliseconds and this timer is never reached, so
+   * the only readers who wait are ones whose renderer is in trouble — and for
+   * them the alternative is not a faster sequence, it is a sequence that plays
+   * entirely inside a single stalled frame. The Skip control is already up at
+   * 0.8s regardless, so nobody is held here against their will.
+   */
+  useEffect(() => {
+    if (lit) return;
+    const id = window.setTimeout(() => setLit(true), 5000);
+    return () => clearTimeout(id);
+  }, [lit]);
 
   const finish = useCallback(() => {
     if (dismissed.current) return;
@@ -63,7 +97,7 @@ export function VerdictOverture({
   }, [onDone, cap.reduced]);
 
   const timeline = useExecutionTimeline({
-    play: cap.ready,
+    play: cap.ready && ready,
     reduced: cap.reduced,
     sound: soundEnabled(),
     onDone: finish,
@@ -118,6 +152,7 @@ export function VerdictOverture({
             progress={timeline.progress}
             shake={timeline.shake}
             cap={cap}
+            onReady={() => setLit(true)}
           />
         )}
         {/* Scrim, so embers drifting down never sit behind the first line. */}
