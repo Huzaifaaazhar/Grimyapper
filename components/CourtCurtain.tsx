@@ -1,145 +1,207 @@
 'use client';
 
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useEffect, useState } from 'react';
+import dynamic from 'next/dynamic';
+import { gsap } from 'gsap';
+import { SplitText } from 'gsap/SplitText';
+import { useEffect, useRef, useState } from 'react';
 
-import { Embers } from './Embers';
-import { Candle, Scales } from './Heraldry';
+import { registerEases } from '@/lib/motion/eases';
+import { useCapability } from '@/lib/motion/useCapability';
 
 /**
  * The court retires to deliberate.
  *
- * A confession about this component: the judgement it covers takes roughly a
- * third of a millisecond. The classifier is arithmetic in this process, so
- * there is nothing to wait for. The curtain exists because a sentence delivered
- * instantly reads as a form validating, not as a court ruling — so `Judge`
- * holds it open for a fixed span and the stages below are paced to fill it.
+ * A confession the old version already carried and this one keeps: the
+ * judgement underneath takes about a third of a millisecond. The classifier is
+ * arithmetic in this process; there is nothing to wait for. The curtain exists
+ * because a sentence delivered instantly reads as a form validating, not as a
+ * court ruling, so `Judge` holds it open and the beats below are paced to fill
+ * it. No percentage is shown, because there is nothing to measure.
  *
- * That is theatre, and it is named as theatre rather than dressed up as
- * progress: no percentage is shown, and the rule at the foot is a quill drawing
- * a line, not a bar claiming to measure anything.
+ * What changed is the staging. One GSAP master timeline owns the pacing; the
+ * title inks in letter by letter via SplitText; each stage name writes on with
+ * a quill-pressure stroke; and the balance is a real damped oscillator rather
+ * than a CSS loop swinging on a countable beat.
  */
 
+const CurtainCanvas = dynamic(
+  () => import('@/components/three/CurtainCanvas').then((m) => m.CurtainCanvas),
+  { ssr: false, loading: () => null },
+);
+
 const STAGES = [
-  'Consulting the sovereign’s ledger…',
-  'Weighing treasury against heresy…',
-  'Inspecting for artificial intelligence…',
+  'Consulting the sovereign’s ledger',
+  'Weighing treasury against heresy',
+  'Inspecting for artificial intelligence',
 ] as const;
 
-/** Rotating under the stages, so a second look at the curtain is not the first. */
-const MARGINALIA = [
-  'A boy has been sent to the archive. He is not a fast boy.',
-  'The assayer is sharpening his quill. This bodes ill.',
-  'Three merchants attempted this in the year twenty-four. We are looking them up.',
-  'The scribe has spilt ink upon the ledger. He is unharmed.',
-  'The wax is warming.',
-  'The almanac is consulted for the hour of thy ruin.',
-];
-
 export function CourtCurtain({ duration = 3600 }: { duration?: number }) {
-  const [stage, setStage] = useState(0);
-  const [aside, setAside] = useState(() => Math.floor(Math.random() * MARGINALIA.length));
-  const still = useReducedMotion();
+  const cap = useCapability();
+  const root = useRef<HTMLDivElement>(null);
+  const title = useRef<HTMLHeadingElement>(null);
+  const [stage, setStage] = useState(-1);
 
   useEffect(() => {
-    const per = duration / STAGES.length;
-    const timers = STAGES.map((_, i) => window.setTimeout(() => setStage(i), i * per));
-    const rotate = window.setInterval(
-      () => setAside((i) => (i + 1) % MARGINALIA.length),
-      Math.max(1400, per),
-    );
-    return () => {
-      timers.forEach(clearTimeout);
-      clearInterval(rotate);
-    };
-  }, [duration]);
+    if (!cap.ready) return;
+    registerEases();
+
+    if (cap.reduced) {
+      // Everything at once, held still. The words are the content; the inking
+      // and the balance are decoration, and only decoration is dropped.
+      setStage(STAGES.length - 1);
+      return;
+    }
+
+    gsap.registerPlugin(SplitText);
+
+    /*
+     * gsap.context scopes every tween it creates, so one revert() on unmount
+     * undoes the animations *and* SplitText's DOM surgery. Without it, a
+     * curtain unmounted mid-run leaves split character spans behind in the
+     * heading.
+     */
+    const ctx = gsap.context(() => {
+      /*
+       * `aria: 'auto'` is not optional here: splitting a heading into
+       * per-character spans makes most screen readers announce it one letter at
+       * a time. The option restores a readable label on the parent and hides
+       * the pieces from the accessibility tree.
+       */
+      const split = title.current
+        ? SplitText.create(title.current, { type: 'chars', aria: 'auto' })
+        : null;
+
+      const tl = gsap.timeline();
+
+      if (split) {
+        tl.addLabel('ink').from(
+          split.chars,
+          {
+            opacity: 0,
+            // Blackletter is written with a broad nib: strokes arrive from the
+            // upper left and the ink spreads into the parchment, so the letters
+            // drop and sharpen rather than fading up uniformly.
+            yPercent: -34,
+            rotate: -7,
+            filter: 'blur(5px)',
+            duration: 0.5,
+            ease: 'quill',
+            stagger: { each: 0.028, from: 'start' },
+          },
+          'ink',
+        );
+      }
+
+      // The stages, paced across what is left after the title has inked.
+      const per = (duration / 1000 - 0.7) / STAGES.length;
+      STAGES.forEach((_, i) => {
+        tl.call(() => setStage(i), undefined, 0.7 + i * per);
+      });
+
+      return () => split?.revert();
+    }, root);
+
+    return () => ctx.revert();
+  }, [cap.ready, cap.reduced, duration]);
 
   return (
-    <motion.div
-      className="hall quire fixed inset-0 z-50 flex flex-col items-center justify-center overflow-y-auto px-6 py-12"
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: still ? 0 : 0.45 }}
+    <div
+      ref={root}
+      className="hall fixed inset-0 z-50 flex flex-col overflow-hidden"
       role="status"
       aria-live="polite"
       aria-label="The court deliberates"
     >
-      <Embers tone="gilt" density={48} />
-
-      {/* candle at the left hand, the balance at the centre — as the bench sits */}
-      <div className="relative flex items-end gap-6 sm:gap-14">
-        <motion.div
-          initial={{ opacity: 0, y: 18 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: still ? 0 : 0.7, delay: still ? 0 : 0.1 }}
-        >
-          <Candle size={104} className="sm:hidden" />
-          <Candle size={150} className="hidden sm:block" />
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: still ? 0 : 0.8, delay: still ? 0 : 0.2 }}
-        >
-          <Scales size={168} className="sm:hidden" />
-          <Scales size={250} className="hidden sm:block" />
-        </motion.div>
-      </div>
-
-      {/* the stages, struck through as each is passed */}
-      <ol className="relative mt-12 w-full max-w-md space-y-4 text-center">
-        {STAGES.map((line, i) => (
-          <li key={line}>
-            <motion.p
-              className="titling text-[0.72rem] leading-relaxed sm:text-sm"
-              animate={{
-                opacity: i < stage ? 0.32 : i === stage ? 1 : 0.14,
-                color: i === stage ? '#f3d886' : '#d4af37',
-              }}
-              transition={{ duration: still ? 0 : 0.5 }}
-            >
-              {line}
-            </motion.p>
-          </li>
-        ))}
-      </ol>
-
-      {/* the quill draws its line across the foot of the page */}
-      <div className="relative mt-10 w-full max-w-md">
-        <div className="h-px w-full bg-[rgba(212,175,55,0.18)]" />
-        <motion.div
-          className="absolute inset-y-0 left-0 h-px bg-[var(--color-gilt)]"
-          initial={{ width: '0%' }}
-          animate={{ width: '100%' }}
-          transition={{ duration: still ? 0 : duration / 1000, ease: 'linear' }}
+      <div className="relative min-h-0 flex-[3]">
+        {cap.webgl && !cap.reduced && <CurtainCanvas cap={cap} stage={stage} />}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-20"
+          style={{ background: 'linear-gradient(to bottom, transparent, #14100a)' }}
         />
-        {!still && (
-          <motion.span
-            aria-hidden
-            className="absolute -top-5 text-lg text-[var(--color-gilt-lit)]"
-            initial={{ left: '0%' }}
-            animate={{ left: '100%' }}
-            transition={{ duration: duration / 1000, ease: 'linear' }}
-          >
-            ✒
-          </motion.span>
-        )}
       </div>
 
-      <AnimatePresence mode="wait">
-        <motion.p
-          key={aside}
-          className="relative mt-10 max-w-sm text-center text-base italic leading-relaxed text-[rgba(233,223,198,0.62)]"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: still ? 0 : 0.4 }}
+      <div className="relative z-10 flex flex-[2] flex-col items-center px-6 pb-8">
+        <h2
+          ref={title}
+          className="blackletter text-center text-4xl leading-none text-[#f3d886] sm:text-5xl"
         >
-          {MARGINALIA[aside]}
-        </motion.p>
-      </AnimatePresence>
-    </motion.div>
+          The court deliberates
+        </h2>
+
+        <ol className="mt-8 w-full max-w-md space-y-4 text-center">
+          {STAGES.map((line, i) => (
+            <li key={line}>
+              <QuillLine text={line} state={i < stage ? 'past' : i === stage ? 'now' : 'next'} />
+            </li>
+          ))}
+        </ol>
+      </div>
+    </div>
+  );
+}
+
+/**
+ * A stage name written on with a quill.
+ *
+ * The stroke is an SVG path whose dash offset is animated — DrawSVG's
+ * mechanism, done directly because a single path needs no plugin — along a
+ * slightly bowed line. The bow is the effect: a nib held by a hand does not
+ * travel dead straight, and a perfectly level rule reads as a progress bar
+ * where a bowed one reads as a pen stroke.
+ */
+function QuillLine({ text, state }: { text: string; state: 'past' | 'now' | 'next' }) {
+  const path = useRef<SVGPathElement>(null);
+
+  useEffect(() => {
+    const el = path.current;
+    if (!el) return;
+    registerEases();
+
+    const len = el.getTotalLength();
+    gsap.set(el, { strokeDasharray: len });
+
+    if (state === 'now') {
+      gsap.fromTo(
+        el,
+        { strokeDashoffset: len },
+        { strokeDashoffset: 0, duration: 0.62, ease: 'quill' },
+      );
+      return () => {
+        gsap.killTweensOf(el);
+      };
+    }
+
+    gsap.set(el, { strokeDashoffset: state === 'past' ? 0 : len });
+  }, [state]);
+
+  return (
+    <span className="relative inline-block">
+      <span
+        className="titling text-[0.72rem] transition-opacity duration-500 sm:text-sm"
+        style={{
+          color: state === 'now' ? '#f3d886' : '#d4af37',
+          opacity: state === 'past' ? 0.34 : state === 'now' ? 1 : 0.16,
+        }}
+      >
+        {text}
+      </span>
+      <svg
+        aria-hidden
+        className="pointer-events-none absolute -bottom-1.5 left-0 h-2 w-full overflow-visible"
+        viewBox="0 0 100 4"
+        preserveAspectRatio="none"
+      >
+        <path
+          ref={path}
+          d="M0.5 2.4 C22 1.1, 54 1.0, 99.5 2.1"
+          fill="none"
+          stroke="#d4af37"
+          strokeWidth={state === 'now' ? 1.5 : 1}
+          strokeLinecap="round"
+          opacity={state === 'next' ? 0 : 0.85}
+        />
+      </svg>
+    </span>
   );
 }
