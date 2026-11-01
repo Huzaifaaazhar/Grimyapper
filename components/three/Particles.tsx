@@ -193,7 +193,7 @@ export function Particles({
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
-      uSize: { value: tone === 'ember' ? 2.1 : 1.7 },
+      uSize: { value: tone === 'ember' ? 2.1 : 1.05 },
       uRise: { value: tone === 'ember' ? 1 : -1 },
       uTurb: { value: tone === 'ember' ? 0.42 : 0.26 },
       uBounds: { value: new THREE.Vector3(...bounds) },

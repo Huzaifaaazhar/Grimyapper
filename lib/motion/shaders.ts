@@ -282,3 +282,70 @@ void main(){
   gl_FragColor = vec4(col, page.a);
 }
 `;
+
+/* --------------------------------------------------------------- gold leaf */
+
+/**
+ * Burnished gold with a specular sweep travelling across it.
+ *
+ * Two things separate real gold leaf from a yellow fill. First, it is
+ * *anisotropic*: the burnishing leaves directional grain, so the highlight is a
+ * streak along the grain rather than a round hotspot. Second, the metal is
+ * almost entirely reflection — its colour comes from what it reflects, tinted,
+ * not from a diffuse term. Both are faked here rather than ray-traced: a moving
+ * band provides the reflection, the grain stretches it, and the result is
+ * tinted by the gold tokens the rest of the app already uses.
+ *
+ * uSweep runs 0..1 and is driven by the timeline, so the light passes once on
+ * cue rather than looping on its own clock.
+ */
+export const GOLD_FRAG = /* glsl */ `
+precision highp float;
+varying vec2 vUv;
+uniform float uTime;
+uniform float uSweep;    // position of the travelling highlight, 0..1
+uniform float uReveal;   // how much of the leaf has been gilded, 0..1
+uniform float uSeed;
+
+${SIMPLEX_3D}
+
+void main(){
+  // Burnishing grain: fine, directional, and fixed to the surface.
+  float grain = snoise(vec3(vUv.x * 160.0, vUv.y * 9.0, uSeed)) * 0.5 + 0.5;
+
+  /*
+   * The gilding front, travelling along the diagonal the border is traced on.
+   *
+   * Written as 1.0 - smoothstep(front, along): the leaf is gilded BEHIND the
+   * front. The first version compared against 1.0 - along, which meant that at
+   * uReveal 1 only the last sixteenth of the surface passed and everything else
+   * was discarded, so no gold ever appeared at all.
+   */
+  float along = (vUv.x * 0.62 + vUv.y * 0.38);
+  float gilded = 1.0 - smoothstep(uReveal - 0.02, uReveal + 0.16, along);
+  if (gilded <= 0.001) discard;
+
+  // The sweep: a narrow band crossing at an angle, stretched along the grain
+  // so it reads as a streak rather than a disc.
+  float band = 1.0 - abs(along - uSweep) * 7.0;
+  band = max(band, 0.0);
+  float spec = pow(band, 2.4) * (0.55 + grain * 0.75);
+
+  vec3 deep   = vec3(0.541, 0.392, 0.071);   // --color-gilt-deep  #8a6412
+  vec3 gold   = vec3(0.831, 0.686, 0.216);   // --color-gilt       #d4af37
+  vec3 lit    = vec3(0.953, 0.847, 0.525);   // --color-gilt-lit   #f3d886
+  vec3 white  = vec3(1.0, 0.98, 0.9);
+
+  // Base metal, varied by the grain so it is never a flat fill.
+  vec3 col = mix(deep, gold, grain);
+  col = mix(col, lit, spec * 0.85);
+  // The very centre of the sweep blows past white: bloom picks this up.
+  col = mix(col, white, pow(band, 7.0));
+
+  // A hot rim right at the gilding front, as the leaf catches.
+  float front = 1.0 - smoothstep(0.0, 0.07, abs(along - uReveal));
+  col += lit * front * 0.9;
+
+  gl_FragColor = vec4(col, gilded);
+}
+`;

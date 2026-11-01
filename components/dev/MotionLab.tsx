@@ -30,6 +30,11 @@ const BurnStage = dynamic(() => import('./stages/BurnStage').then((m) => m.BurnS
   loading: () => <Loading label="burn" />,
 });
 
+const BlessStage = dynamic(() => import('./stages/BlessStage').then((m) => m.BlessStage), {
+  ssr: false,
+  loading: () => <Loading label="blessing" />,
+});
+
 function Loading({ label }: { label: string }) {
   return (
     <div className="grid h-full place-items-center text-xs tracking-[0.2em] text-[#d4af37] uppercase">
@@ -42,6 +47,7 @@ const BEATS = [
   { id: 'flame', label: 'Flame + candlelight', Stage: FlameStage },
   { id: 'seal', label: 'Wax seal + embers', Stage: SealStage },
   { id: 'burn', label: 'Execution — the decree burns', Stage: BurnStage },
+  { id: 'bless', label: 'Blessing — gold leaf', Stage: BlessStage },
 ] as const;
 
 export function MotionLab() {
