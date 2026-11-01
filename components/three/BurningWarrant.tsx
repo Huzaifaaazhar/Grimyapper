@@ -149,6 +149,23 @@ export function BurningWarrant({
   const rest = useRef<Float32Array | null>(null);
 
   useFrame((state) => {
+    /*
+     * The entrance. The leaf drops in and settles over the first tenth of the
+     * sequence, before anything catches. Without it the warrant was simply
+     * present on frame one, which is the single clearest weight failure the
+     * recorded frames showed: nothing in the scene had been *placed*, it had
+     * only appeared.
+     */
+    if (mesh.current) {
+      const land = THREE.MathUtils.smoothstep(progress, 0.0, 0.1);
+      // Eased by hand rather than by GSAP: this is a function of progress, so
+      // it stays correct when the sequence is scrubbed or snapped.
+      const e = 1 - Math.pow(1 - land, 3);
+      mesh.current.position.y = position[1] + (1 - e) * 1.1;
+      mesh.current.rotation.x = rotation[0] + (1 - e) * 0.35;
+      mesh.current.rotation.z = rotation[2] - (1 - e) * 0.12;
+    }
+
     if (mat.current) {
       mat.current.uniforms.uProgress.value = progress;
       mat.current.uniforms.uTime.value = state.clock.elapsedTime;

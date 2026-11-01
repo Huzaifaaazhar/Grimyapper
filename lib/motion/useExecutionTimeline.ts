@@ -32,6 +32,18 @@ export function useExecutionTimeline({
 }) {
   const [state, setState] = useState<SequenceState>({ progress: 0, shake: 0, done: false });
   const tl = useRef<gsap.core.Timeline | null>(null);
+  /*
+   * onDone is held in a ref and deliberately kept out of the effect's deps.
+   *
+   * Callers pass it as an inline arrow, so its identity changes on every parent
+   * render — and this hook re-renders its parent on every tick. With onDone in
+   * the dependency array that is a loop: tick, re-render, new callback, effect
+   * re-runs, timeline rebuilt from zero. The sequence restarts forever and the
+   * burn never reaches its end, which is exactly how it showed up in the
+   * recorded frames.
+   */
+  const done = useRef(onDone);
+  done.current = onDone;
   // Mutated by the tweens, read once per tick: avoids a setState per property.
   const vals = useRef({ progress: 0, shake: 0 });
   const finished = useRef(false);
@@ -49,7 +61,7 @@ export function useExecutionTimeline({
       setState({ progress: 1, shake: 0, done: false });
       const id = window.setTimeout(() => {
         setState({ progress: 1, shake: 0, done: true });
-        onDone?.();
+        done.current?.();
       }, 200);
       return () => clearTimeout(id);
     }
@@ -57,6 +69,27 @@ export function useExecutionTimeline({
     finished.current = false;
     vals.current.progress = 0;
     vals.current.shake = 0;
+
+    /*
+     * Lag smoothing off for the duration of the sequence, and a wall-clock
+     * backstop behind it.
+     *
+     * GSAP's default is lagSmoothing(500, 33): when a frame takes longer than
+     * half a second it pretends only 33ms elapsed, so an animation never jumps
+     * after a stall. That is the right default for a scroll-linked tween and
+     * exactly wrong for a timed sequence — on a device that cannot keep up, the
+     * timeline advances in 33ms steps per real half-second and a 2.9s sequence
+     * takes twenty. Measured here at 23.4s under software rendering, against
+     * 0.9s on the reduced-motion path.
+     *
+     * With smoothing off the timeline advances by real elapsed time: a slow
+     * device sees a choppier sequence of the correct length, which is the right
+     * trade for something the reader is waiting behind. The backstop then
+     * guarantees an exit even if the ticker stops entirely — a backgrounded tab
+     * suspends rAF, and nobody should return to a verdict page still showing
+     * the curtain.
+     */
+    gsap.ticker.lagSmoothing(0);
 
     const timeline = gsap.timeline({
       onUpdate: () => {
@@ -66,7 +99,7 @@ export function useExecutionTimeline({
         if (finished.current) return;
         finished.current = true;
         setState({ progress: 1, shake: 0, done: true });
-        onDone?.();
+        done.current?.();
       },
     });
 
@@ -97,18 +130,36 @@ export function useExecutionTimeline({
       .set(vals.current, { shake: 0 });
 
     tl.current = timeline;
+
+    const backstop = window.setTimeout(
+      () => {
+        if (finished.current) return;
+        finished.current = true;
+        timeline.kill();
+        setState({ progress: 1, shake: 0, done: true });
+        done.current?.();
+      },
+      // The brief's cap for the overture. The timeline itself runs ~2.9s, so
+      // on any device that keeps up this never fires; on one that does not, it
+      // is what holds the sequence to its stated budget.
+      4000,
+    );
+
     return () => {
+      clearTimeout(backstop);
       timeline.kill();
       tl.current = null;
+      // Restore the default for anything else on the page that relies on it.
+      gsap.ticker.lagSmoothing(500, 33);
     };
-  }, [play, reduced, sound, onDone]);
+  }, [play, reduced, sound]);
 
   const skip = () => {
     if (finished.current) return;
     finished.current = true;
     tl.current?.kill();
     setState({ progress: 1, shake: 0, done: true });
-    onDone?.();
+    done.current?.();
   };
 
   return { ...state, skip, duration: 3.5 };

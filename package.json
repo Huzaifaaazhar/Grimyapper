@@ -13,7 +13,8 @@
     "eval": "NODE_OPTIONS='--conditions=react-server' tsx evals/run.ts",
     "train": "tsx scripts/train.ts",
     "mine": "NODE_OPTIONS='--conditions=react-server' tsx scripts/mine.ts",
-    "smoke": "tsx scripts/smoke.ts"
+    "smoke": "tsx scripts/smoke.ts",
+    "shots": "tsx scripts/shots.ts"
   },
   "dependencies": {
     "@react-three/drei": "10.7.9",
@@ -41,6 +42,7 @@
     "@types/three": "0.186.0",
     "eslint": "^9.35.0",
     "eslint-config-next": "^15.5.4",
+    "playwright": "1.57.0",
     "tailwindcss": "^4.1.13",
     "tsx": "^4.20.5",
     "typescript": "^5.9.2",

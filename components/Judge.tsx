@@ -81,6 +81,15 @@ export function Judge({
       setPhase({ kind: 'judging' });
       const started = Date.now();
 
+      /*
+       * Start fetching the verdict's 3D chunk now, in parallel with the
+       * judgement itself. It is a lazy import so it costs nothing to anyone who
+       * never submits, but waiting until the overture mounts meant the recorded
+       * frames showed an empty hall for most of the curtain and the scene
+       * arriving just as it ended.
+       */
+      void import('@/components/three/VerdictCanvas');
+
       try {
         const res = await fetch('/api/judge', {
           method: 'POST',
