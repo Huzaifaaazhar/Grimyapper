@@ -20,6 +20,11 @@ const FlameStage = dynamic(() => import('./stages/FlameStage').then((m) => m.Fla
   loading: () => <Loading label="flame" />,
 });
 
+const SealStage = dynamic(() => import('./stages/SealStage').then((m) => m.SealStage), {
+  ssr: false,
+  loading: () => <Loading label="seal" />,
+});
+
 function Loading({ label }: { label: string }) {
   return (
     <div className="grid h-full place-items-center text-xs tracking-[0.2em] text-[#d4af37] uppercase">
@@ -28,7 +33,10 @@ function Loading({ label }: { label: string }) {
   );
 }
 
-const BEATS = [{ id: 'flame', label: 'Flame + candlelight', Stage: FlameStage }] as const;
+const BEATS = [
+  { id: 'flame', label: 'Flame + candlelight', Stage: FlameStage },
+  { id: 'seal', label: 'Wax seal + embers', Stage: SealStage },
+] as const;
 
 export function MotionLab() {
   const [beat, setBeat] = useState<string>('flame');
