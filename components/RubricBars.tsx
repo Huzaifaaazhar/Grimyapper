@@ -1,40 +1,18 @@
+import { InkedPips } from '@/components/InkedPips';
 import { RUBRIC_AXES, type Rubric, type RubricNotes } from '@/lib/schemas';
 import { RUBRIC_HINTS, RUBRIC_LABELS, RUBRIC_PLAIN, RUBRIC_WEIGHTS } from '@/lib/scoring';
 
-const PIPS = Array.from({ length: 10 }, (_, i) => i + 1);
-
 /**
- * Ten lozenges, inked or left blank — how a tally is kept in a ledger, and
- * far more legible at a glance than a progress bar. Magnitude is carried by the
+ * Ten lozenges, inked or left blank — how a tally is kept in a ledger, and far
+ * more legible at a glance than a progress bar. Magnitude is carried by the
  * count, not by colour, so nothing here depends on hue.
+ *
+ * The marks are now struck in one at a time; see components/InkedPips.tsx.
  */
 function Tally({ value, label }: { value: number; label: string }) {
-  return (
-    <div
-      className="flex items-center gap-[5px]"
-      role="meter"
-      aria-valuenow={value}
-      aria-valuemin={0}
-      aria-valuemax={10}
-      aria-label={`${label}: ${value} of 10`}
-    >
-      {PIPS.map((pip) => {
-        const inked = pip <= value;
-        return (
-          <span
-            key={pip}
-            aria-hidden
-            className="h-[13px] w-[13px] rotate-45 border"
-            style={{
-              borderColor: 'rgba(42,30,18,0.65)',
-              background: inked ? '#2a1e12' : 'transparent',
-            }}
-          />
-        );
-      })}
-    </div>
-  );
+  return <InkedPips value={value} label={label} />;
 }
+
 
 export function RubricBars({ rubric, notes }: { rubric: Rubric; notes: RubricNotes }) {
   return (

@@ -1,6 +1,9 @@
 'use client';
 
+import { gsap } from 'gsap';
 import { useId, useRef, useState } from 'react';
+
+import { registerEases } from '@/lib/motion/eases';
 
 import { Fleuron, WaxSeal } from './Ornaments';
 import {
@@ -26,7 +29,7 @@ type Props = {
  * the moment anyone touched a field.
  */
 const FIELD =
-  'w-full rounded-none border-0 border-b bg-transparent px-0 py-2 text-base text-ink placeholder:text-[rgba(111,92,63,0.5)] rule-ink transition-colors focus:border-vermilion focus:outline-none disabled:opacity-50 sm:text-lg';
+  'w-full rounded-none border-0 border-b bg-transparent px-0 py-2 text-base text-ink placeholder:text-[rgba(111,92,63,0.5)] rule-ink transition-colors focus:border-vermilion focus:outline-none disabled:opacity-50 sm:text-lg ink-field';
 
 const GUILD_SUGGESTIONS = [
   'Adjusters of the middling guilds',
@@ -147,6 +150,7 @@ export function PitchForm({ onSubmit, disabled }: Props) {
   const [declared, setDeclared] = useState<Declaration>('unstated');
   const [touched, setTouched] = useState(false);
   const ideaRef = useRef<HTMLTextAreaElement>(null);
+  const formRef = useRef<HTMLFormElement>(null);
 
   const tooShort = idea.trim().length < MIN_IDEA_CHARS;
   const remaining = MAX_IDEA_CHARS - idea.length;
@@ -154,6 +158,7 @@ export function PitchForm({ onSubmit, disabled }: Props) {
   return (
     <form
       className="rise"
+      ref={formRef}
       onSubmit={(e) => {
         e.preventDefault();
         setTouched(true);
@@ -161,14 +166,44 @@ export function PitchForm({ onSubmit, disabled }: Props) {
           ideaRef.current?.focus();
           return;
         }
-        onSubmit({
+        /*
+         * The letter is folded and sealed before it is sent.
+         *
+         * Submitting used to swap the form out for the curtain on the next
+         * frame, which is a cut. Folding it gives the gesture an object: the
+         * leaf collapses along its own horizontal axis, tips away, and is gone
+         * — and only then does the court retire. The judgement request is
+         * already in flight underneath, so this costs nothing but the beat.
+         */
+        const send = () =>
+          onSubmit({
           idea: idea.trim(),
           name: name.trim(),
           customer: customer.trim(),
-          moat: moat.trim(),
-          capital: capital.trim(),
-          declared,
-        });
+            moat: moat.trim(),
+            capital: capital.trim(),
+            declared,
+          });
+
+        const el = formRef.current;
+        if (!el || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+          send();
+          return;
+        }
+
+        registerEases();
+        gsap
+          .timeline({ onComplete: send })
+          .to(el, {
+            scaleY: 0.04,
+            // Folded sheets do not stay flat to the eye; it tips as it closes.
+            rotateX: 42,
+            transformOrigin: '50% 50%',
+            transformPerspective: 900,
+            duration: 0.42,
+            ease: 'anticipate',
+          })
+          .to(el, { opacity: 0, scale: 0.92, duration: 0.16, ease: 'glide' }, '-=0.08');
       }}
     >
       {/* --------------------------------------------------- I. the core artifice */}

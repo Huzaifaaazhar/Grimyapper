@@ -9,6 +9,7 @@ import { DeathCertificate } from '@/components/DeathCertificate';
 import { Dossier } from '@/components/Dossier';
 import { Fleuron, Lozenges } from '@/components/Ornaments';
 import { PitchForm } from '@/components/PitchForm';
+import { SmoothScroll } from '@/components/SmoothScroll';
 import { VerdictOverture } from '@/components/VerdictOverture';
 import type { JudgeRequest, JudgeResult } from '@/lib/schemas';
 
@@ -129,6 +130,13 @@ export function Judge({
 
   return (
     <>
+      {/*
+       * Only while a document is on screen. During a sequence the page is a
+       * fixed full-screen takeover with nothing to scroll, and a RAF loop
+       * running under it costs frames exactly where they are scarcest.
+       */}
+      <SmoothScroll enabled={settled !== null} />
+
       <AnimatePresence>
         {phase.kind === 'judging' && <CourtCurtain duration={DELIBERATION_MS} />}
       </AnimatePresence>

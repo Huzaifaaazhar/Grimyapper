@@ -49,7 +49,21 @@ function ChartTooltip({
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
-    <div className="border border-ink bg-vellum-lit px-3.5 py-2.5 shadow-[0_8px_20px_-8px_rgba(42,30,18,0.6)]">
+    <div
+      className="border border-ink px-3.5 py-2.5"
+      style={{
+        /*
+         * Lit from the upper left, as everything else in the court is: a warm
+         * wash across the card, a gold rim on the lit edge, and a long soft
+         * shadow falling away from the source. A flat panel with an even
+         * border sits on the page; this one sits above it.
+         */
+        background:
+          'radial-gradient(120% 140% at 12% 0%, #fdf6e4 0%, #f2ecdb 46%, #e4d7b8 100%)',
+        boxShadow:
+          'inset 1px 1px 0 rgba(255,246,222,0.9), inset -1px -1px 0 rgba(122,92,46,0.18), 0 10px 24px -10px rgba(42,30,18,0.7), 0 2px 5px -2px rgba(42,30,18,0.4)',
+      }}
+    >
       <p className="titling text-[0.6rem] text-vermilion">
         Month {row.month} · {row.label}
       </p>
@@ -64,6 +78,7 @@ function ChartTooltip({
 }
 
 function Panel({ months, dataKey }: { months: MonthRow[]; dataKey: Key }) {
+  const reduceMotion = prefersReducedMotion();
   const series = SERIES[dataKey];
   const final = months[months.length - 1];
   const gradientId = `wash-${dataKey}`;
@@ -111,6 +126,20 @@ function Panel({ months, dataKey }: { months: MonthRow[]; dataKey: Key }) {
               cursor={{ stroke: 'rgba(42,30,18,0.45)', strokeWidth: 1 }}
               content={<ChartTooltip dataKey={dataKey} />}
             />
+            {/*
+             * Animated, where it used to snap.
+             *
+             * Recharts interpolates the path between the old and new series, so
+             * dragging an assumption morphs the curve rather than replacing it
+             * — which is the behaviour MorphSVG would have been used for, and
+             * is already correct here because the two paths share a point
+             * count. The first render draws it on from nothing.
+             *
+             * The easing is Recharts' own; its prop takes a named curve rather
+             * than a CustomEase, so this is the one place a stock ease is used,
+             * and 'ease-out' is the closest of the five it offers to the
+             * glide the rest of the app uses.
+             */}
             <Area
               type="monotone"
               dataKey={dataKey}
@@ -118,13 +147,20 @@ function Panel({ months, dataKey }: { months: MonthRow[]; dataKey: Key }) {
               strokeWidth={2}
               fill={`url(#${gradientId})`}
               activeDot={{ r: 4.5, stroke: '#e9dfc6', strokeWidth: 2, fill: INK }}
-              isAnimationActive={false}
+              isAnimationActive={!reduceMotion}
+              animationDuration={620}
+              animationEasing="ease-out"
             />
           </AreaChart>
         </ResponsiveContainer>
       </div>
     </figure>
   );
+}
+
+function prefersReducedMotion(): boolean {
+  if (typeof window === 'undefined') return false;
+  return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 export function ProjectionChart({ months }: { months: MonthRow[] }) {

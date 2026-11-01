@@ -276,6 +276,28 @@
       inset 0 0 34px rgba(138, 100, 18, 0.14);
   }
 
+  /*
+   * An ink stroke drawn under a field as it takes focus.
+   *
+   * The CSS border is kept for the resting state; this is a second line on top
+   * of it that is drawn from the left on focus, with the width easing in. A
+   * border-colour transition changes a rule's colour; this one puts a stroke
+   * down, which is what a quill does.
+   */
+  .ink-field {
+    background-image: linear-gradient(to right, var(--color-vermilion), var(--color-vermilion));
+    background-repeat: no-repeat;
+    background-position: 0 100%;
+    background-size: 0% 2px;
+    transition:
+      background-size 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      border-color 220ms ease;
+  }
+
+  .ink-field:focus {
+    background-size: 100% 2px;
+  }
+
   /* A custom scrollbar, so even the chrome is in period. */
   .quire {
     scrollbar-width: thin;

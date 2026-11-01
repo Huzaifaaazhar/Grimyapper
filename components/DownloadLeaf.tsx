@@ -1,6 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { gsap } from 'gsap';
+import { useRef, useState } from 'react';
+
+import { registerEases } from '@/lib/motion/eases';
 
 /**
  * One button, one action: hand the reader the document as a PDF.
@@ -23,6 +26,7 @@ export function DownloadLeaf({
   tone?: 'gilt' | 'vermilion';
 }) {
   const [state, setState] = useState<'idle' | 'writing' | 'failed'>('idle');
+  const scroll = useRef<HTMLSpanElement>(null);
 
   const gilt = tone === 'gilt';
   const frame = gilt
@@ -35,17 +39,48 @@ export function DownloadLeaf({
         type="button"
         onClick={async () => {
           setState('writing');
+          /*
+           * The leaf rolls up into the button.
+           *
+           * A spinner would say "waiting"; this says what is being waited for.
+           * The scroll narrows along its own width and lifts, which is the
+           * shape a sheet makes when it is rolled for carrying — and it runs
+           * for as long as the PDF takes rather than on a fixed loop, so a
+           * slow first click (jsPDF is ~350 KB and lazily imported) is covered
+           * rather than hidden.
+           */
+          let rolling: gsap.core.Tween | undefined;
+          const el = scroll.current;
+          if (el && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            registerEases();
+            rolling = gsap.to(el, {
+              scaleX: 0.12,
+              y: -3,
+              duration: 0.5,
+              ease: 'glide',
+              yoyo: true,
+              repeat: -1,
+              transformOrigin: '50% 50%',
+            });
+          }
           try {
             await onDownload();
             setState('idle');
           } catch {
             setState('failed');
+          } finally {
+            rolling?.kill();
+            if (el) gsap.set(el, { scaleX: 1, y: 0 });
           }
         }}
         disabled={state === 'writing'}
         className={`group inline-flex items-center gap-4 border-2 px-8 py-4 transition-colors disabled:cursor-wait disabled:opacity-60 ${frame}`}
       >
-        <span aria-hidden className={`text-xl ${gilt ? 'text-gold' : 'text-vermilion'}`}>
+        <span
+          ref={scroll}
+          aria-hidden
+          className={`inline-block text-xl ${gilt ? 'text-gold' : 'text-vermilion'}`}
+        >
           ⤓
         </span>
         <span className="blackletter text-2xl text-ink sm:text-3xl">

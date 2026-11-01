@@ -1,7 +1,9 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { gsap } from 'gsap';
+import { useEffect, useRef, useState } from 'react';
 
+import { registerEases } from '@/lib/motion/eases';
 import { BAND_COLORS } from '@/lib/scoring';
 import type { Band } from '@/lib/schemas';
 
@@ -19,22 +21,33 @@ const TICKS = Array.from({ length: 11 }, (_, i) => i * 10);
 export function ScoreDial({ score, band }: { score: number; band: Band }) {
   const [shown, setShown] = useState(0);
   const { hex: color, label } = BAND_COLORS[band];
+  // Tweened in place and read once per tick, so the number and the arc cannot
+  // disagree by a frame.
+  const roll = useRef({ v: 0 });
 
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
       setShown(score);
       return;
     }
-    const start = performance.now();
-    let frame = 0;
-    const tick = (now: number) => {
-      const t = Math.min(1, (now - start) / 1000);
-      setShown(Math.round(score * (1 - Math.pow(1 - t, 3))));
-      if (t < 1) frame = requestAnimationFrame(tick);
+    registerEases();
+
+    roll.current.v = 0;
+    /*
+     * The needle swings past and settles, rather than easing politely to a
+     * stop. A dial is a physical instrument with a mass on a spring; the
+     * cubic ease-out this replaces arrived at the answer and simply stopped,
+     * which is what made it read as a number being set rather than measured.
+     */
+    const tween = gsap.to(roll.current, {
+      v: score,
+      duration: 1.15,
+      ease: 'settle',
+      onUpdate: () => setShown(Math.round(roll.current.v)),
+    });
+    return () => {
+      tween.kill();
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
   }, [score]);
 
   const filled = (Math.max(0, Math.min(100, shown)) / 100) * ARC;
