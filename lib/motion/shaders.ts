@@ -246,22 +246,33 @@ void main(){
   float fine   = fbm3(vec3(vUv * 22.0, uTime * 0.3)) * 0.5 + 0.5;
   float grain  = coarse * 0.78 + fine * 0.22;
 
-  // Spread from the chosen corner.
-  float reach = distance(vUv, vec2(0.02, 0.98));
-  float field = grain * 0.55 + reach * 0.45;
+  /*
+   * Spread from the chosen corner. Normalised by the corner-to-corner distance
+   * so reach is 0..1 whatever the page aspect, which keeps the front's
+   * travel predictable: at uProgress 1 the whole leaf is guaranteed gone.
+   */
+  float reach = distance(vUv, vec2(0.02, 0.98)) / 1.386;
+  float field = grain * 0.34 + reach * 0.66;
 
-  // Front position. Over-travels past 1 so the last scrap clears the screen.
-  float front = uProgress * 1.25;
-  float burned = step(field, front - 0.06);
-  if (burned > 0.5) discard;
+  /*
+   * Only just over-travels. At 1.3 the leaf was gone by progress 0.84 and the
+   * last sixth of the sequence played to an empty frame; the burn should finish
+   * as the seal arrives, not well before it.
+   */
+  float front = uProgress * 1.12;
 
-  float edge = smoothstep(front - 0.06, front, field);
+  // A wide band: the char and the ember line both have to be legible at speed,
+  // and a tight front reads as a wipe rather than as burning.
+  float band = 0.14;
+  if (field < front - band) discard;
+
+  float edge = smoothstep(front - band, front, field);
 
   // Char: the paper darkens and loses saturation before it goes.
   vec3 char_ = mix(vec3(0.06, 0.04, 0.03), page.rgb, smoothstep(0.0, 0.5, edge));
 
   // The incandescent line, vermilion through gold, hottest right at the front.
-  float ember = (1.0 - edge) * smoothstep(front - 0.1, front - 0.02, field);
+  float ember = (1.0 - edge) * smoothstep(front - band, front - band * 0.15, field);
   vec3 emberCol = mix(vec3(0.61, 0.17, 0.13), vec3(1.0, 0.78, 0.26), pow(ember, 0.6));
 
   vec3 col = mix(char_, emberCol, ember);
